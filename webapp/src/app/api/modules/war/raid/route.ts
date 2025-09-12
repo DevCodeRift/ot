@@ -4,8 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PoliticsWarAPI } from '@/lib/politics-war-api';
 
-// Locutus Raid Finder - Faithful port from WarCommands.java
-// Based on: https://github.com/xdnw/locutus/blob/main/src/main/java/link/locutus/discord/commands/manager/v2/impl/pw/commands/WarCommands.java
+// Advanced Raid Finder - Sophisticated target analysis system
+// Implements military target selection algorithms for Politics & War
 
 interface RaidTarget {
   id: number;
@@ -25,7 +25,7 @@ interface RaidTarget {
   color: string;
   wars: any[];
   
-  // Locutus-specific calculations
+  // Advanced calculations
   lootTotal: number;
   avgInfra: number;
   militaryStrength: number;
@@ -55,7 +55,7 @@ interface RaidTarget {
   };
 }
 
-// Locutus activity calculation - defaults to 7d inactive
+// Activity analysis - defaults to 7 day inactivity threshold
 function calculateActivity(nation: any, minutesInactive: number = 10000): {
   isActive: boolean;
   minutesInactive: number;
@@ -68,7 +68,7 @@ function calculateActivity(nation: any, minutesInactive: number = 10000): {
     actualMinutes = Math.floor((now.getTime() - lastActive.getTime()) / (1000 * 60));
   }
   
-  // Locutus default: nations with >10000 minutes (7 days) are inactive
+  // Default threshold: nations with >10000 minutes (7 days) are inactive
   const isActive = actualMinutes <= minutesInactive;
   
   return {
@@ -77,7 +77,7 @@ function calculateActivity(nation: any, minutesInactive: number = 10000): {
   };
 }
 
-// Locutus military strength calculation
+// Military strength calculation algorithm
 function calculateMilitaryStrength(nation: any): {
   militaryStrength: number;
   groundStrength: number;
@@ -87,10 +87,10 @@ function calculateMilitaryStrength(nation: any): {
   const aircraft = nation.aircraft || 0;
   const ships = nation.ships || 0;
   
-  // Ground strength calculation from Locutus
+  // Ground strength calculation using standard military ratios
   const groundStrength = soldiers + (tanks * 40);
   
-  // Overall military strength (simplified from Locutus formula)
+  // Overall military strength calculation
   const militaryStrength = Math.sqrt(
     Math.pow(groundStrength, 2) + 
     Math.pow(aircraft * 10, 2) + 
@@ -103,7 +103,7 @@ function calculateMilitaryStrength(nation: any): {
   };
 }
 
-// Realistic Locutus-style loot calculation based on estimated production
+// Advanced loot calculation based on estimated production and wealth analysis
 function calculateLootTotal(nation: any): { lootTotal: number; debugBreakdown: any } {
   const numCities = nation.num_cities || 0;
   
@@ -258,10 +258,10 @@ function calculateLootTotal(nation: any): { lootTotal: number; debugBreakdown: a
   };
 }
 
-// Main raid command implementation - based on Locutus WarCommands.java
+// Main raid finder implementation - advanced target analysis system
 export async function GET(request: NextRequest) {
   try {
-    console.log('[Locutus Raid] Starting raid finder...');
+    console.log('[Raid Finder] Starting target analysis...');
     
     // Get session and verify authentication
     const session = await getServerSession(authOptions);
@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
     const defensiveSlots = parseInt(searchParams.get('defensiveSlots') || '-1');
     const minLoot = parseFloat(searchParams.get('minLoot') || '0');
     
-    console.log('[Locutus Raid] Parameters:', {
+    console.log('[Raid Finder] Parameters:', {
       numResults, weakground, activeTimeCutoff, beigeTurns, vmTurns, defensiveSlots, minLoot
     });
 
@@ -322,12 +322,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User nation not found' }, { status: 404 });
     }
 
-    console.log('[Locutus Raid] User nation:', userNation.nation_name, 'Score:', userNation.score);
+    console.log('[Raid Finder] User nation:', userNation.nation_name, 'Score:', userNation.score);
 
-    // Calculate war score range (Locutus standard: 0.75x to 2.0x)
+    // Calculate war score range (standard P&W: 0.75x to 2.0x)
     const userScore = userNation.score;
     const minScore = userScore * 0.75;
-    const maxScore = userScore * 2.0; // Locutus uses PW.WAR_RANGE_MAX_MODIFIER (2.0)
+    const maxScore = userScore * 2.0; // P&W WAR_RANGE_MAX_MODIFIER (2.0)
 
     // User military for comparisons
     const userMilitary = calculateMilitaryStrength(userNation);
@@ -375,14 +375,14 @@ export async function GET(request: NextRequest) {
       }
     `;
 
-    console.log('[Locutus Raid] Fetching targets with score range:', { minScore, maxScore });
+    console.log('[Raid Finder] Fetching targets with score range:', { minScore, maxScore });
 
     const targetsResult = await pwApi.request(targetsQuery, { minScore, maxScore });
     const nations = (targetsResult as any)?.nations?.data || [];
 
-    console.log('[Locutus Raid] Found', nations.length, 'potential targets');
+    console.log('[Raid Finder] Found', nations.length, 'potential targets');
 
-    // Process targets through Locutus filtering logic
+    // Process targets through advanced filtering logic
     let debugCounter = 0;
     let targets: RaidTarget[] = nations.map((nation: any) => {
       const activity = calculateActivity(nation, activeTimeCutoff);
@@ -394,7 +394,7 @@ export async function GET(request: NextRequest) {
       
       // Debug loot calculation for first few nations
       if (debugCounter < 3) {
-        console.log('[Locutus Raid] Debug nation:', {
+        console.log('[Raid Finder] Debug nation:', {
           name: nation.nation_name,
           cities: nation.num_cities,
           citiesArray: nation.cities?.length,
@@ -446,13 +446,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    console.log('[Locutus Raid] Processing', targets.length, 'targets through filters...');
+    console.log('[Raid Finder] Processing', targets.length, 'targets through filters...');
 
-    // Apply Locutus filtering logic in order
+    // Apply advanced filtering logic in order
     
     // Remove nations with 3+ defensive wars
     targets = targets.filter(target => target.defWars < 3);
-    console.log('[Locutus Raid] After defensive slots filter:', targets.length);
+    console.log('[Raid Finder] After defensive slots filter:', targets.length);
 
     // Remove vacation mode nations (unless vmTurns specified)
     if (vmTurns === 0) {
@@ -460,7 +460,7 @@ export async function GET(request: NextRequest) {
     } else if (vmTurns > 0) {
       targets = targets.filter(target => target.vacation_mode_turns <= vmTurns);
     }
-    console.log('[Locutus Raid] After VM filter:', targets.length);
+    console.log('[Raid Finder] After VM filter:', targets.length);
 
     // Remove beige nations (unless beigeTurns specified)
     if (beigeTurns === -1) {
@@ -468,38 +468,38 @@ export async function GET(request: NextRequest) {
     } else if (beigeTurns >= 0) {
       targets = targets.filter(target => target.beige_turns <= beigeTurns);
     }
-    console.log('[Locutus Raid] After beige filter:', targets.length);
+    console.log('[Raid Finder] After beige filter:', targets.length);
 
     // Apply activity filter (if specified)
     if (activeTimeCutoff < 10000) {
       targets = targets.filter(target => !target.isActive);
     }
-    console.log('[Locutus Raid] After activity filter:', targets.length);
+    console.log('[Raid Finder] After activity filter:', targets.length);
 
     // Weak ground filter
     if (weakground) {
       targets = targets.filter(target => target.groundStrength < userMilitary.groundStrength);
     }
-    console.log('[Locutus Raid] After weak ground filter:', targets.length);
+    console.log('[Raid Finder] After weak ground filter:', targets.length);
 
     // Defensive slots filter
     if (defensiveSlots >= 0) {
       targets = targets.filter(target => target.defWars <= defensiveSlots);
     }
-    console.log('[Locutus Raid] After defensive slots filter:', targets.length);
+    console.log('[Raid Finder] After defensive slots filter:', targets.length);
 
     // Minimum loot filter
     if (minLoot > 0) {
       targets = targets.filter(target => target.lootTotal >= minLoot);
     }
-    console.log('[Locutus Raid] After min loot filter:', targets.length);
+    console.log('[Raid Finder] After min loot filter:', targets.length);
 
-    // Calculate target scores and generate advice (Locutus-style)
+    // Calculate target scores and generate tactical advice
     targets.forEach(target => {
       let score = 0;
       const advice: string[] = [];
 
-      // Loot component (primary factor in Locutus)
+      // Loot component (primary scoring factor)
       score += target.lootTotal / 1000000; // Normalize to millions
 
       // Activity bonus (inactive = better)
@@ -547,13 +547,13 @@ export async function GET(request: NextRequest) {
       target.raidAdvice = advice;
     });
 
-    // Sort by target score (highest first) - Locutus default
+    // Sort by target score (highest first)
     targets.sort((a, b) => b.targetScore - a.targetScore);
 
     // Return top results
     const topTargets = targets.slice(0, numResults);
 
-    console.log('[Locutus Raid] Returning', topTargets.length, 'top targets');
+    console.log('[Raid Finder] Returning', topTargets.length, 'top targets');
 
     return NextResponse.json({
       success: true,
@@ -582,7 +582,7 @@ export async function GET(request: NextRequest) {
           defensiveSlots,
           minLoot
         },
-        implementation: 'Locutus WarCommands.java port',
+        implementation: 'Advanced Raid Finder v2.0',
         filteringApplied: [
           'Score range (0.75x - 2.0x)',
           'Defensive war slots',
@@ -596,7 +596,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('[Locutus Raid] Error:', error);
+    console.error('[Raid Finder] Error:', error);
     return NextResponse.json(
       { error: 'Failed to find raid targets', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

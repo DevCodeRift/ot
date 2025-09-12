@@ -1,7 +1,7 @@
 'use client';
 
-import LocutusRaidFinder from './locutus-raid';
+import RaidFinder from './raid-finder';
 
 export default function WarModule() {
-  return <LocutusRaidFinder />;
+  return <RaidFinder />;
 }
