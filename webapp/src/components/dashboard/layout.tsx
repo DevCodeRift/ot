@@ -56,7 +56,6 @@ export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) 
     { name: 'Dashboard', href: `/${currentAllianceId}/dashboard`, icon: Home, current: true },
     { name: 'Membership Management', href: `/${currentAllianceId}/modules/membership`, icon: Users, current: false },
     { name: 'War Management', href: `/${currentAllianceId}/modules/war`, icon: Sword, current: false },
-    { name: 'Banking & Economics', href: `/${currentAllianceId}/modules/banking`, icon: DollarSign, current: false },
     { name: 'Quest & Achievement System', href: `/${currentAllianceId}/modules/quests`, icon: Trophy, current: false },
     { name: 'Recruitment System', href: `/${currentAllianceId}/modules/recruitment`, icon: UserPlus, current: false },
     { name: 'Economic Tools', href: `/${currentAllianceId}/modules/economic-tools`, icon: DollarSign, current: false },

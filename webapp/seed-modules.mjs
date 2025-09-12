@@ -19,13 +19,6 @@ const modules = [
     requiredPerms: ['alliance_member'],
   },
   {
-    id: 'banking',
-    name: 'Banking & Economics',
-    description: 'Manage alliance bank, track taxes, handle loans, and monitor economic metrics',
-    category: 'economics',
-    requiredPerms: ['alliance_bank'],
-  },
-  {
     id: 'quests',
     name: 'Quest & Achievement System',
     description: 'Create and manage member quests, achievements, and progression tracking',
