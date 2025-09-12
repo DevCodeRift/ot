@@ -87,16 +87,69 @@ function calculateMilitaryStrength(nation: any): {
   };
 }
 
-// Locutus loot calculation - basic implementation
+// Realistic Locutus-style loot calculation 
 function calculateLootTotal(nation: any): number {
-  // Basic loot calculation - in real Locutus this is much more complex
-  // involving city infrastructure, resources, and bank calculations
-  const baseLoot = nation.cities * 50000; // Base per city
-  const infraBonus = (nation.avg_infra || 1000) * nation.cities * 10;
-  const militaryValue = (nation.soldiers * 5) + (nation.tanks * 60) + 
-                       (nation.aircraft * 4000) + (nation.ships * 50000);
+  const numCities = nation.num_cities || 0;
   
-  return baseLoot + infraBonus + (militaryValue * 0.1);
+  if (numCities === 0) return 0;
+  
+  // 1. CASH HOLDINGS - Nation's actual money (major component)
+  const cash = nation.money || 0;
+  const lootableCash = cash * 0.14; // Standard raid war takes 14% of cash
+  
+  // 2. RESOURCE VALUES - Convert resources to cash using market values
+  const resourceValues = {
+    coal: 1300,
+    oil: 1400,
+    uranium: 3200,
+    iron: 1500,
+    bauxite: 1600,
+    lead: 2000,
+    gasoline: 2400,
+    munitions: 3500,
+    steel: 3500,
+    aluminum: 3000,
+    food: 600
+  };
+  
+  let resourceValue = 0;
+  for (const [resource, value] of Object.entries(resourceValues)) {
+    const amount = nation[resource] || 0;
+    resourceValue += amount * value * 0.14; // 14% loot rate for resources
+  }
+  
+  // 3. DAILY REVENUE ESTIMATION - Based on infrastructure and cities
+  const avgInfra = nation.avg_infra || 1000;
+  const dailyRevenue = numCities * (avgInfra * 8 + 2000); // Rough estimation
+  const revenueComponent = dailyRevenue * 2; // Equivalent to ~2 days revenue
+  
+  // 4. INFRASTRUCTURE VALUE - High infra = high loot
+  const infraValue = avgInfra * numCities * 15; // $15 per infra point per city
+  
+  // 5. MILITARY EQUIPMENT VALUE (if they get zeroed)
+  const soldiers = nation.soldiers || 0;
+  const tanks = nation.tanks || 0;
+  const aircraft = nation.aircraft || 0;
+  const ships = nation.ships || 0;
+  
+  const militaryValue = (soldiers * 5) + (tanks * 60) + (aircraft * 4000) + (ships * 50000);
+  const lootableMilitary = militaryValue * 0.25; // Some military losses = loot
+  
+  // 6. SCORE-BASED MULTIPLIER (higher score = more valuable)
+  const score = nation.score || 0;
+  const scoreMultiplier = 1 + (score / 5000); // 1.2x at 1000 score, 1.4x at 2000 score, etc.
+  
+  // TOTAL LOOT CALCULATION
+  const baseLoot = lootableCash + resourceValue + revenueComponent + infraValue + lootableMilitary;
+  const totalLoot = baseLoot * scoreMultiplier;
+  
+  // Add some randomness like real raiding (+/- 20%)
+  const randomFactor = 0.8 + (Math.random() * 0.4);
+  const finalLoot = totalLoot * randomFactor;
+  
+  console.log(`[Loot Debug] ${nation.nation_name}: cash=${Math.round(lootableCash)}, resources=${Math.round(resourceValue)}, revenue=${Math.round(revenueComponent)}, infra=${Math.round(infraValue)}, military=${Math.round(lootableMilitary)}, total=${Math.round(finalLoot)}`);
+  
+  return Math.round(finalLoot);
 }
 
 // Main raid command implementation - based on Locutus WarCommands.java
@@ -191,11 +244,24 @@ export async function GET(request: NextRequest) {
             }
             score
             num_cities
+            avg_infra
             soldiers
             tanks
             aircraft
             ships
             spies
+            money
+            coal
+            oil
+            uranium
+            iron
+            bauxite
+            lead
+            gasoline
+            munitions
+            steel
+            aluminum
+            food
             last_active
             beige_turns
             color
@@ -224,6 +290,7 @@ export async function GET(request: NextRequest) {
     console.log('[Locutus Raid] Found', nations.length, 'potential targets');
 
     // Process targets through Locutus filtering logic
+    let debugCounter = 0;
     let targets: RaidTarget[] = nations.map((nation: any) => {
       const activity = calculateActivity(nation, activeTimeCutoff);
       const military = calculateMilitaryStrength(nation);
@@ -231,6 +298,22 @@ export async function GET(request: NextRequest) {
       const avgInfra = nation.cities?.length > 0 ? 
         nation.cities.reduce((sum: number, city: any) => sum + (city.infrastructure || 0), 0) / nation.cities.length : 
         1000;
+      
+      // Debug loot calculation for first few nations
+      if (debugCounter < 3) {
+        console.log('[Locutus Raid] Debug nation:', {
+          name: nation.nation_name,
+          cities: nation.num_cities,
+          citiesArray: nation.cities?.length,
+          avgInfra,
+          soldiers: nation.soldiers,
+          tanks: nation.tanks,
+          aircraft: nation.aircraft,
+          ships: nation.ships,
+          calculatedLoot: lootTotal
+        });
+        debugCounter++;
+      }
       
       // Count defensive wars
       const defWars = nation.wars?.filter((war: any) => war.def_id === nation.id).length || 0;

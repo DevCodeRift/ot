@@ -84,9 +84,23 @@ export default function LocutusRaidFinder() {
       const response = await fetch(`/api/modules/war/raid?${params}`);
       const data = await response.json();
       
+      if (response.status === 401) {
+        setError('Authentication required. Please sign in with Discord to use the raid finder.');
+        return;
+      }
+      
       if (data.error) {
         setError(data.error);
       } else {
+        // Debug: Log first target's loot data
+        if (data.targets && data.targets.length > 0) {
+          console.log('[Frontend Debug] First target loot data:', {
+            name: data.targets[0].nation_name,
+            lootTotal: data.targets[0].lootTotal,
+            cities: data.targets[0].cities,
+            score: data.targets[0].score
+          });
+        }
         setResults(data);
       }
     } catch (err) {
