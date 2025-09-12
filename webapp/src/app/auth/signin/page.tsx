@@ -1,13 +1,18 @@
 'use client'
 
 import { signIn, getSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Shield, Zap, Users, BarChart3 } from 'lucide-react'
 
 export default function SignIn() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<any>({})
+  
+  const error = searchParams.get('error')
+  const callbackUrl = searchParams.get('callbackUrl') || '/'
 
   useEffect(() => {
     // Check if user is already signed in
@@ -16,12 +21,28 @@ export default function SignIn() {
         router.push('/')
       }
     })
-  }, [router])
+    
+    // Set debug info
+    if (typeof window !== 'undefined') {
+      setDebugInfo({
+        baseUrl: window.location.origin,
+        callbackUrl,
+        error,
+        userAgent: navigator.userAgent,
+        redirectUri: `${window.location.origin}/api/auth/callback/discord`
+      })
+    }
+  }, [router, callbackUrl, error])
 
   const handleDiscordSignIn = async () => {
     setIsLoading(true)
+    console.log('Initiating Discord OAuth with:', { callbackUrl, baseUrl: window.location.origin })
     try {
-      await signIn('discord', { callbackUrl: '/' })
+      const result = await signIn('discord', { 
+        callbackUrl,
+        redirect: true 
+      })
+      console.log('SignIn result:', result)
     } catch (error) {
       console.error('Sign in error:', error)
       setIsLoading(false)
@@ -88,6 +109,14 @@ export default function SignIn() {
               ACCESS TERMINAL
             </h2>
             
+            {error && (
+              <div className="bg-cp-red/10 border border-cp-red rounded p-3 mb-4">
+                <p className="text-cp-red text-sm">
+                  Authentication error: {error}
+                </p>
+              </div>
+            )}
+            
             <p className="text-cp-text-secondary mb-6">
               Connect your Discord account to access the alliance management system
             </p>
@@ -128,6 +157,18 @@ export default function SignIn() {
           <p>SYSTEM STATUS: <span className="text-cp-green">ONLINE</span></p>
           <p className="mt-1">SECURITY LEVEL: <span className="text-cp-cyan">MAXIMUM</span></p>
         </div>
+        
+        {/* Debug info - development only */}
+        {process.env.NODE_ENV === 'development' && Object.keys(debugInfo).length > 0 && (
+          <div className="mt-8 max-w-md mx-auto">
+            <div className="cp-card p-4">
+              <h3 className="text-cp-yellow font-semibold mb-2 text-center">Debug Info</h3>
+              <pre className="text-xs text-cp-text-secondary overflow-auto max-h-40">
+                {JSON.stringify(debugInfo, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`

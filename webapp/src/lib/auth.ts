@@ -69,15 +69,8 @@ export const authOptions: NextAuthOptions = {
           token.currentAllianceId = dbUser.currentAllianceId || undefined
         }
 
-        // Store Discord info if this is a new login
+        // Store Discord info from account if available
         if (account?.provider === "discord") {
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              discordId: account.providerAccountId,
-              discordUsername: user.name || undefined,
-            }
-          })
           token.discordId = account.providerAccountId
           token.discordUsername = user.name || undefined
         }
@@ -105,4 +98,18 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
+  logger: {
+    error(code, metadata) {
+      console.error("NextAuth Error:", code, metadata)
+    },
+    warn(code) {
+      console.warn("NextAuth Warning:", code)
+    },
+    debug(code, metadata) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("NextAuth Debug:", code, metadata)
+      }
+    }
+  }
 }
