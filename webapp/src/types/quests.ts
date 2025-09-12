@@ -282,15 +282,6 @@ export const QUEST_METRICS: QuestMetricDefinition[] = [
     unit: 'policy',
     comparisonTypes: ['eq']
   },
-  {
-    id: 'bloc_name',
-    name: 'Color Bloc',
-    description: 'Current color bloc membership',
-    category: 'diplomatic',
-    dataPath: 'bloc_name',
-    unit: 'bloc',
-    comparisonTypes: ['eq']
-  },
 
   // Project Metrics (Nation Development Projects)
   {
@@ -701,28 +692,8 @@ export const DOMESTIC_POLICIES = [
   'RAPID_EXPANSION'
 ] as const
 
-export const COLOR_BLOCS = [
-  'Beige',
-  'Gray',
-  'Lime',
-  'Green',
-  'White',
-  'Brown',
-  'Maroon',
-  'Purple',
-  'Blue',
-  'Red',
-  'Orange',
-  'Olive',
-  'Aqua',
-  'Black',
-  'Yellow',
-  'Pink'
-] as const
-
 export type WarPolicy = typeof WAR_POLICIES[number]
 export type DomesticPolicy = typeof DOMESTIC_POLICIES[number]
-export type ColorBloc = typeof COLOR_BLOCS[number]
 
 // Quest Type Categories
 export const QUEST_CATEGORIES = [

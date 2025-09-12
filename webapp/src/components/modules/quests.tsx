@@ -27,12 +27,10 @@ import {
   formatMetricValue,
   WAR_POLICIES,
   DOMESTIC_POLICIES,
-  COLOR_BLOCS,
   type QuestMetricDefinition,
   type ComparisonType,
   type WarPolicy,
-  type DomesticPolicy,
-  type ColorBloc
+  type DomesticPolicy
 } from '@/types/quests'
 
 interface Quest {
@@ -656,17 +654,6 @@ export default function QuestsModule({ allianceId }: QuestsModuleProps) {
                       <option value="">Select domestic policy...</option>
                       {DOMESTIC_POLICIES.map((policy, index) => (
                         <option key={policy} value={index}>{policy.replace(/_/g, ' ')}</option>
-                      ))}
-                    </select>
-                  ) : questForm.targetMetric === 'bloc_name' ? (
-                    <select
-                      value={questForm.targetValue}
-                      onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
-                      className="cp-input"
-                    >
-                      <option value="">Select color bloc...</option>
-                      {COLOR_BLOCS.map((bloc, index) => (
-                        <option key={bloc} value={index}>{bloc}</option>
                       ))}
                     </select>
                   ) : QUEST_METRICS.find(m => m.id === questForm.targetMetric)?.unit === 'project' ? (
