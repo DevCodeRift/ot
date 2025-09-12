@@ -33,19 +33,13 @@ export default async function AllianceDashboardPage({ params }: DashboardPagePro
   const { modules, user, error } = await getUserAvailableModules()
 
   const moduleColors = {
-    'member-mgmt': 'cyan',
-    'war-mgmt': 'red', 
-    'economic': 'yellow',
-    'recruitment': 'green',
-    'gamification': 'purple'
+    'membership': 'cyan',
+    'war': 'red'
   }
 
   const moduleIcons = {
-    'member-mgmt': '👥',
-    'war-mgmt': '⚔️',
-    'economic': '💰',
-    'recruitment': '🎯',
-    'gamification': '🏆'
+    'membership': '👥',
+    'war': '⚔️'
   }
 
   return (

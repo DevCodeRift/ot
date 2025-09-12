@@ -6,9 +6,6 @@ import {
   Home, 
   Users, 
   Sword, 
-  DollarSign, 
-  BarChart3, 
-  UserPlus, 
   Settings, 
   LogOut,
   Menu,
@@ -56,19 +53,16 @@ export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) 
     { name: 'Dashboard', href: `/${currentAllianceId}/dashboard`, icon: Home, current: true },
     { name: 'Member Management', href: `/${currentAllianceId}/modules/membership`, icon: Users, current: false },
     { name: 'War Management', href: `/${currentAllianceId}/modules/war`, icon: Sword, current: false },
-    { name: 'Economic Tools', href: `/${currentAllianceId}/modules/banking`, icon: DollarSign, current: false },
-    { name: 'Analytics', href: `/${currentAllianceId}/modules/analytics`, icon: BarChart3, current: false },
-    { name: 'Recruitment', href: `/${currentAllianceId}/modules/recruitment`, icon: UserPlus, current: false },
-    { name: 'Module Administration', href: '/admin/modules', icon: Settings, current: false },
   ]
 
   // Check if user is admin based on Discord ID
   const adminIds = process.env.ADMIN_DISCORD_IDS?.split(',') || []
   const isAdmin = session?.user?.discordId ? adminIds.includes(session.user.discordId) : false
 
-  // Add global admin navigation if user is admin
+  // Add admin navigation if user is admin
   if (isAdmin) {
     navigation.push(
+      { name: 'Module Administration', href: '/admin/modules', icon: Settings, current: false },
       { name: 'Alliance Management', href: '/admin/alliances', icon: Shield, current: false }
     )
   }

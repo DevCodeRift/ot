@@ -1,4 +1,4 @@
-// Seed script to create the 5 core modules
+// Seed script to create the core modules
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
@@ -8,42 +8,21 @@ const modules = [
     id: 'membership',
     name: 'Membership Management',
     description: 'Manage alliance members, track activity, assign roles, and monitor performance',
-    category: 'member-mgmt',
+    category: 'membership',
     requiredPerms: ['alliance_member'],
   },
   {
     id: 'war',
     name: 'War Management', 
-    description: 'Coordinate wars, assign targets, track battles, and plan military operations',
-    category: 'war-mgmt',
-    requiredPerms: ['alliance_member'],
-  },
-  {
-    id: 'banking',
-    name: 'Banking & Economics',
-    description: 'Manage alliance bank, track taxes, handle loans, and monitor economic metrics',
-    category: 'economic',
-    requiredPerms: ['alliance_member'],
-  },
-  {
-    id: 'recruitment',
-    name: 'Recruitment System',
-    description: 'Manage applications, track recruitment campaigns, and onboard new members',
-    category: 'recruitment', 
-    requiredPerms: ['alliance_member'],
-  },
-  {
-    id: 'quests',
-    name: 'Quest & Achievement System',
-    description: 'Create and manage member quests, achievements, and progression tracking',
-    category: 'gamification',
+    description: 'Coordinate wars, assign targets, track battles, and plan military operations with advanced raid finder',
+    category: 'war',
     requiredPerms: ['alliance_member'],
   }
 ]
 
 async function seedModules() {
   try {
-    console.log('🌱 Seeding alliance modules...')
+    console.log('🌱 Seeding core alliance modules...')
     
     for (const module of modules) {
       const result = await prisma.module.upsert({
@@ -68,7 +47,7 @@ async function seedModules() {
       console.log(`✅ ${result.name} (${result.id})`)
     }
     
-    console.log('\n🎉 All modules seeded successfully!')
+    console.log('\n🎉 Core modules seeded successfully!')
     
     // Show all modules
     const allModules = await prisma.module.findMany({
