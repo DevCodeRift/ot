@@ -240,6 +240,10 @@ export async function POST(request: NextRequest) {
           }
         }
         currentValue = Number(value) || 0
+      } else if (metric.category === 'projects') {
+        // Handle project metrics - these are boolean values
+        const projectValue = (nationData as any)[metric.dataPath]
+        currentValue = projectValue ? 1 : 0
       } else {
         // Direct property access
         currentValue = Number((nationData as any)[metric.dataPath]) || 0
@@ -394,9 +398,11 @@ async function getCustomMetrics(pwApi: PoliticsWarAPI, nationId: number, allianc
     // Placeholder implementation - in a real system, this would query wars
     // from the P&W API or maintain a local cache of war data
     
+    // War-related metrics
     customData.warsWon = 0 // Would count wars where nation was winner
     customData.warsDeclared = 0 // Would count wars where nation was attacker
     customData.defensiveWars = 0 // Would count wars where nation was defender
+    customData.money_looted = 0 // Total money looted across all wars
     
     // Calculate alliance membership days
     // This would require tracking join date - for now use a placeholder
@@ -404,6 +410,9 @@ async function getCustomMetrics(pwApi: PoliticsWarAPI, nationId: number, allianc
 
     // Calculate login streak - would need additional tracking
     customData.loginStreak = 7 // Placeholder
+
+    // Note: Project data is now fetched directly from nation data,
+    // not as custom metrics, since they're boolean values in the P&W API
 
   } catch (error) {
     console.warn('Error fetching custom metrics:', error)

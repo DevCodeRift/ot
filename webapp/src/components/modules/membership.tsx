@@ -22,10 +22,11 @@ interface Member {
   score: number
   last_active: string
   nation_url: string
+  bloc_name?: string
 }
 
 type TabType = 'overview' | 'activity' | 'roles' | 'performance'
-type SortBy = 'nation_name' | 'cities' | 'position' | 'last_active' | 'score'
+type SortBy = 'nation_name' | 'cities' | 'position' | 'last_active' | 'score' | 'bloc_name'
 type SortOrder = 'asc' | 'desc'
 
 interface MembershipModuleProps {
@@ -96,6 +97,32 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
     if (positionId <= 5) return 'bg-cp-yellow border-cp-yellow text-cp-yellow' // Officers
     if (positionId <= 10) return 'bg-cp-green border-cp-green text-cp-green' // Government
     return 'bg-cp-cyan border-cp-cyan text-cp-cyan' // Members
+  }
+
+  const getBlocBadgeColor = (blocName?: string) => {
+    if (!blocName) return 'bg-cp-border border-cp-border text-cp-text-muted'
+    
+    // Color mapping for different blocs with appropriate cyberpunk colors
+    const colorMap: Record<string, string> = {
+      'Beige': 'bg-amber-200 border-amber-300 text-amber-800',
+      'Gray': 'bg-gray-200 border-gray-300 text-gray-800',
+      'Lime': 'bg-lime-200 border-lime-300 text-lime-800',
+      'Green': 'bg-cp-green border-cp-green text-cp-green',
+      'White': 'bg-gray-100 border-gray-200 text-gray-800',
+      'Brown': 'bg-amber-600 border-amber-700 text-amber-100',
+      'Maroon': 'bg-red-800 border-red-900 text-red-100',
+      'Purple': 'bg-purple-600 border-purple-700 text-purple-100',
+      'Blue': 'bg-blue-600 border-blue-700 text-blue-100',
+      'Red': 'bg-cp-red border-cp-red text-cp-red',
+      'Orange': 'bg-cp-orange border-cp-orange text-cp-orange',
+      'Olive': 'bg-yellow-600 border-yellow-700 text-yellow-100',
+      'Aqua': 'bg-cp-cyan border-cp-cyan text-cp-cyan',
+      'Black': 'bg-gray-900 border-gray-800 text-gray-100',
+      'Yellow': 'bg-cp-yellow border-cp-yellow text-cp-yellow',
+      'Pink': 'bg-pink-600 border-pink-700 text-pink-100'
+    }
+    
+    return colorMap[blocName] || 'bg-cp-border border-cp-border text-cp-text-secondary'
   }
 
   const formatLastActive = (dateString: string) => {
@@ -228,6 +255,7 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
                       <option value="nation_name">Nation Name</option>
                       <option value="cities">City Count</option>
                       <option value="position">Position</option>
+                      <option value="bloc_name">Color Bloc</option>
                       <option value="last_active">Last Active</option>
                       <option value="score">Score</option>
                     </select>
@@ -270,6 +298,9 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
                             Position
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-cp-text-secondary uppercase tracking-wider">
+                            Color Bloc
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-cp-text-secondary uppercase tracking-wider">
                             Cities
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-cp-text-secondary uppercase tracking-wider">
@@ -301,6 +332,11 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded border ${getPositionBadgeColor(member)} bg-opacity-20`}>
                                 {member.alliance_position_info?.name || member.alliance_position}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${getBlocBadgeColor(member.bloc_name)} bg-opacity-20`}>
+                                {member.bloc_name || 'Unknown'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-cp-text-primary">

@@ -4,7 +4,7 @@ export interface QuestMetricDefinition {
   id: string
   name: string
   description: string
-  category: 'nation' | 'military' | 'economic' | 'diplomatic' | 'alliance'
+  category: 'nation' | 'military' | 'economic' | 'diplomatic' | 'alliance' | 'projects'
   dataPath: string // Path to the metric in P&W API response
   unit: string // Unit of measurement (cities, points, millions, etc.)
   defaultTarget?: number
@@ -261,8 +261,468 @@ export const QUEST_METRICS: QuestMetricDefinition[] = [
     minTarget: 1,
     maxTarget: 100,
     comparisonTypes: ['gte', 'eq', 'lte']
+  },
+
+  // Policy and Diplomatic Metrics
+  {
+    id: 'war_policy',
+    name: 'War Policy',
+    description: 'Current war policy setting',
+    category: 'diplomatic',
+    dataPath: 'war_policy',
+    unit: 'policy',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'domestic_policy',
+    name: 'Domestic Policy',
+    description: 'Current domestic policy setting',
+    category: 'diplomatic',
+    dataPath: 'domestic_policy',
+    unit: 'policy',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'bloc_name',
+    name: 'Color Bloc',
+    description: 'Current color bloc membership',
+    category: 'diplomatic',
+    dataPath: 'bloc_name',
+    unit: 'bloc',
+    comparisonTypes: ['eq']
+  },
+
+  // Project Metrics (Nation Development Projects)
+  {
+    id: 'iron_works',
+    name: 'Ironworks Project',
+    description: 'Whether the nation has built the Ironworks project',
+    category: 'nation',
+    dataPath: 'iron_works',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'bauxite_works',
+    name: 'Bauxiteworks Project',
+    description: 'Whether the nation has built the Bauxiteworks project',
+    category: 'nation',
+    dataPath: 'bauxite_works',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'arms_stockpile',
+    name: 'Arms Stockpile Project',
+    description: 'Whether the nation has built the Arms Stockpile project',
+    category: 'military',
+    dataPath: 'arms_stockpile',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'emergency_gasoline_reserve',
+    name: 'Emergency Gasoline Reserve Project',
+    description: 'Whether the nation has built the Emergency Gasoline Reserve project',
+    category: 'economic',
+    dataPath: 'emergency_gasoline_reserve',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'mass_irrigation',
+    name: 'Mass Irrigation Project',
+    description: 'Whether the nation has built the Mass Irrigation project',
+    category: 'economic',
+    dataPath: 'mass_irrigation',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'international_trade_center',
+    name: 'International Trade Center Project',
+    description: 'Whether the nation has built the International Trade Center project',
+    category: 'economic',
+    dataPath: 'international_trade_center',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'missile_launch_pad',
+    name: 'Missile Launch Pad Project',
+    description: 'Whether the nation has built the Missile Launch Pad project',
+    category: 'military',
+    dataPath: 'missile_launch_pad',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'nuclear_research_facility',
+    name: 'Nuclear Research Facility Project',
+    description: 'Whether the nation has built the Nuclear Research Facility project',
+    category: 'military',
+    dataPath: 'nuclear_research_facility',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'iron_dome',
+    name: 'Iron Dome Project',
+    description: 'Whether the nation has built the Iron Dome project',
+    category: 'military',
+    dataPath: 'iron_dome',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'vital_defense_system',
+    name: 'Vital Defense System Project',
+    description: 'Whether the nation has built the Vital Defense System project',
+    category: 'military',
+    dataPath: 'vital_defense_system',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'central_intelligence_agency',
+    name: 'Central Intelligence Agency Project',
+    description: 'Whether the nation has built the Central Intelligence Agency project',
+    category: 'military',
+    dataPath: 'central_intelligence_agency',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'center_for_civil_engineering',
+    name: 'Center for Civil Engineering Project',
+    description: 'Whether the nation has built the Center for Civil Engineering project',
+    category: 'nation',
+    dataPath: 'center_for_civil_engineering',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'propaganda_bureau',
+    name: 'Propaganda Bureau Project',
+    description: 'Whether the nation has built the Propaganda Bureau project',
+    category: 'nation',
+    dataPath: 'propaganda_bureau',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'uranium_enrichment_program',
+    name: 'Uranium Enrichment Program Project',
+    description: 'Whether the nation has built the Uranium Enrichment Program project',
+    category: 'military',
+    dataPath: 'uranium_enrichment_program',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'urban_planning',
+    name: 'Urban Planning Project',
+    description: 'Whether the nation has built the Urban Planning project',
+    category: 'nation',
+    dataPath: 'urban_planning',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'advanced_urban_planning',
+    name: 'Advanced Urban Planning Project',
+    description: 'Whether the nation has built the Advanced Urban Planning project',
+    category: 'nation',
+    dataPath: 'advanced_urban_planning',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'space_program',
+    name: 'Space Program Project',
+    description: 'Whether the nation has built the Space Program project',
+    category: 'nation',
+    dataPath: 'space_program',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'spy_satellite',
+    name: 'Spy Satellite Project',
+    description: 'Whether the nation has built the Spy Satellite project',
+    category: 'military',
+    dataPath: 'spy_satellite',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'moon_landing',
+    name: 'Moon Landing Project',
+    description: 'Whether the nation has built the Moon Landing project',
+    category: 'nation',
+    dataPath: 'moon_landing',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'pirate_economy',
+    name: 'Pirate Economy Project',
+    description: 'Whether the nation has built the Pirate Economy project',
+    category: 'economic',
+    dataPath: 'pirate_economy',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'recycling_initiative',
+    name: 'Recycling Initiative Project',
+    description: 'Whether the nation has built the Recycling Initiative project',
+    category: 'economic',
+    dataPath: 'recycling_initiative',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'telecommunications_satellite',
+    name: 'Telecommunications Satellite Project',
+    description: 'Whether the nation has built the Telecommunications Satellite project',
+    category: 'nation',
+    dataPath: 'telecommunications_satellite',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'green_technologies',
+    name: 'Green Technologies Project',
+    description: 'Whether the nation has built the Green Technologies project',
+    category: 'economic',
+    dataPath: 'green_technologies',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'arable_land_agency',
+    name: 'Arable Land Agency Project',
+    description: 'Whether the nation has built the Arable Land Agency project',
+    category: 'economic',
+    dataPath: 'arable_land_agency',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'clinical_research_center',
+    name: 'Clinical Research Center Project',
+    description: 'Whether the nation has built the Clinical Research Center project',
+    category: 'nation',
+    dataPath: 'clinical_research_center',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'specialized_police_training_program',
+    name: 'Specialized Police Training Program Project',
+    description: 'Whether the nation has built the Specialized Police Training Program project',
+    category: 'nation',
+    dataPath: 'specialized_police_training_program',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'advanced_engineering_corps',
+    name: 'Advanced Engineering Corps Project',
+    description: 'Whether the nation has built the Advanced Engineering Corps project',
+    category: 'nation',
+    dataPath: 'advanced_engineering_corps',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'government_support_agency',
+    name: 'Government Support Agency Project',
+    description: 'Whether the nation has built the Government Support Agency project',
+    category: 'nation',
+    dataPath: 'government_support_agency',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'research_and_development_center',
+    name: 'Research and Development Center Project',
+    description: 'Whether the nation has built the Research and Development Center project',
+    category: 'nation',
+    dataPath: 'research_and_development_center',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'metropolitan_planning',
+    name: 'Metropolitan Planning Project',
+    description: 'Whether the nation has built the Metropolitan Planning project',
+    category: 'nation',
+    dataPath: 'metropolitan_planning',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'military_salvage',
+    name: 'Military Salvage Project',
+    description: 'Whether the nation has built the Military Salvage project',
+    category: 'military',
+    dataPath: 'military_salvage',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'fallout_shelter',
+    name: 'Fallout Shelter Project',
+    description: 'Whether the nation has built the Fallout Shelter project',
+    category: 'nation',
+    dataPath: 'fallout_shelter',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'activity_center',
+    name: 'Activity Center Project',
+    description: 'Whether the nation has built the Activity Center project',
+    category: 'nation',
+    dataPath: 'activity_center',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'bureau_of_domestic_affairs',
+    name: 'Bureau of Domestic Affairs Project',
+    description: 'Whether the nation has built the Bureau of Domestic Affairs project',
+    category: 'nation',
+    dataPath: 'bureau_of_domestic_affairs',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'advanced_pirate_economy',
+    name: 'Advanced Pirate Economy Project',
+    description: 'Whether the nation has built the Advanced Pirate Economy project',
+    category: 'economic',
+    dataPath: 'advanced_pirate_economy',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'mars_landing',
+    name: 'Mars Landing Project',
+    description: 'Whether the nation has built the Mars Landing project',
+    category: 'nation',
+    dataPath: 'mars_landing',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'surveillance_network',
+    name: 'Surveillance Network Project',
+    description: 'Whether the nation has built the Surveillance Network project',
+    category: 'military',
+    dataPath: 'surveillance_network',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'guiding_satellite',
+    name: 'Guiding Satellite Project',
+    description: 'Whether the nation has built the Guiding Satellite project',
+    category: 'military',
+    dataPath: 'guiding_satellite',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'nuclear_launch_facility',
+    name: 'Nuclear Launch Facility Project',
+    description: 'Whether the nation has built the Nuclear Launch Facility project',
+    category: 'military',
+    dataPath: 'nuclear_launch_facility',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'military_research_center',
+    name: 'Military Research Center Project',
+    description: 'Whether the nation has built the Military Research Center project',
+    category: 'military',
+    dataPath: 'military_research_center',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+  {
+    id: 'military_doctrine',
+    name: 'Military Doctrine Project',
+    description: 'Whether the nation has built the Military Doctrine project',
+    category: 'military',
+    dataPath: 'military_doctrine',
+    unit: 'project',
+    comparisonTypes: ['eq']
+  },
+
+  // War and Combat Metrics
+  {
+    id: 'money_looted',
+    name: 'Money Looted',
+    description: 'Total amount of money looted across all wars',
+    category: 'military',
+    dataPath: 'money_looted',
+    unit: 'millions',
+    defaultTarget: 1000000,
+    minTarget: 0,
+    maxTarget: 100000000,
+    comparisonTypes: ['gte', 'eq', 'lte']
   }
 ]
+
+// Policy and Bloc Enums (matching P&W API schema)
+export const WAR_POLICIES = [
+  'ATTRITION',
+  'TURTLE', 
+  'BLITZKRIEG',
+  'FORTRESS',
+  'MONEYBAGS',
+  'PIRATE',
+  'TACTICIAN',
+  'GUARDIAN',
+  'COVERT',
+  'ARCANE'
+] as const
+
+export const DOMESTIC_POLICIES = [
+  'MANIFEST_DESTINY',
+  'OPEN_MARKETS',
+  'TECHNOLOGICAL_ADVANCEMENT',
+  'IMPERIALISM',
+  'URBANIZATION',
+  'RAPID_EXPANSION'
+] as const
+
+export const COLOR_BLOCS = [
+  'Beige',
+  'Gray',
+  'Lime',
+  'Green',
+  'White',
+  'Brown',
+  'Maroon',
+  'Purple',
+  'Blue',
+  'Red',
+  'Orange',
+  'Olive',
+  'Aqua',
+  'Black',
+  'Yellow',
+  'Pink'
+] as const
+
+export type WarPolicy = typeof WAR_POLICIES[number]
+export type DomesticPolicy = typeof DOMESTIC_POLICIES[number]
+export type ColorBloc = typeof COLOR_BLOCS[number]
 
 // Quest Type Categories
 export const QUEST_CATEGORIES = [

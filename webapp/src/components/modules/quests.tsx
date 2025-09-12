@@ -25,8 +25,14 @@ import {
   QUEST_REWARD_TYPES,
   COMPARISON_LABELS,
   formatMetricValue,
+  WAR_POLICIES,
+  DOMESTIC_POLICIES,
+  COLOR_BLOCS,
   type QuestMetricDefinition,
-  type ComparisonType
+  type ComparisonType,
+  type WarPolicy,
+  type DomesticPolicy,
+  type ColorBloc
 } from '@/types/quests'
 
 interface Quest {
@@ -630,13 +636,58 @@ export default function QuestsModule({ allianceId }: QuestsModuleProps) {
                   <label className="block text-sm font-medium text-cp-text-secondary mb-1">
                     Target Value
                   </label>
-                  <input
-                    type="number"
-                    value={questForm.targetValue}
-                    onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
-                    className="cp-input"
-                    min="0"
-                  />
+                  {questForm.targetMetric === 'war_policy' ? (
+                    <select
+                      value={questForm.targetValue}
+                      onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
+                      className="cp-input"
+                    >
+                      <option value="">Select war policy...</option>
+                      {WAR_POLICIES.map((policy, index) => (
+                        <option key={policy} value={index}>{policy.replace(/_/g, ' ')}</option>
+                      ))}
+                    </select>
+                  ) : questForm.targetMetric === 'domestic_policy' ? (
+                    <select
+                      value={questForm.targetValue}
+                      onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
+                      className="cp-input"
+                    >
+                      <option value="">Select domestic policy...</option>
+                      {DOMESTIC_POLICIES.map((policy, index) => (
+                        <option key={policy} value={index}>{policy.replace(/_/g, ' ')}</option>
+                      ))}
+                    </select>
+                  ) : questForm.targetMetric === 'bloc_name' ? (
+                    <select
+                      value={questForm.targetValue}
+                      onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
+                      className="cp-input"
+                    >
+                      <option value="">Select color bloc...</option>
+                      {COLOR_BLOCS.map((bloc, index) => (
+                        <option key={bloc} value={index}>{bloc}</option>
+                      ))}
+                    </select>
+                  ) : QUEST_METRICS.find(m => m.id === questForm.targetMetric)?.unit === 'project' ? (
+                    <select
+                      value={questForm.targetValue}
+                      onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
+                      className="cp-input"
+                    >
+                      <option value="">Select requirement...</option>
+                      <option value={1}>Must Have Project</option>
+                      <option value={0}>Must NOT Have Project</option>
+                    </select>
+                  ) : (
+                    <input
+                      type="number"
+                      value={questForm.targetValue}
+                      onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
+                      className="cp-input"
+                      min="0"
+                    />
+                  )}
                 </div>
               </div>
 

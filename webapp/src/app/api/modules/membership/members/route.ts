@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get('sortOrder') || 'asc'
     
     // Validate sorting parameters
-    const validSortBy = ['nation_name', 'cities', 'position', 'last_active', 'score']
+    const validSortBy = ['nation_name', 'cities', 'position', 'last_active', 'score', 'bloc_name']
     const validSortOrder = ['asc', 'desc']
     
     if (!validSortBy.includes(sortBy)) {
@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
             num_cities
             score
             last_active
+            bloc_name
           }
         }
       }
@@ -170,7 +171,8 @@ export async function GET(request: NextRequest) {
           cities: member.num_cities,
           score: member.score,
           last_active: member.last_active,
-          nation_url: `https://politicsandwar.com/nation/id=${member.id}`
+          nation_url: `https://politicsandwar.com/nation/id=${member.id}`,
+          bloc_name: member.bloc_name
         }
       } catch (error) {
         console.error('Error formatting member:', member, error)
@@ -217,6 +219,11 @@ export async function GET(request: NextRequest) {
             const aScore = a.score || 0
             const bScore = b.score || 0
             comparison = aScore - bScore
+            break
+          case 'bloc_name':
+            const aBloc = a.bloc_name || ''
+            const bBloc = b.bloc_name || ''
+            comparison = aBloc.localeCompare(bBloc)
             break
           case 'nation_name':
           default:
