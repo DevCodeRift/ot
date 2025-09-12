@@ -25,16 +25,15 @@ export async function POST(request: NextRequest) {
     console.log('API Key length:', apiKey.length)
     console.log('API Key starts with:', apiKey.substring(0, 10) + '...')
 
-    const response = await fetch('https://api.politicsandwar.com/graphql', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
-        'User-Agent': 'Alliance-Manager/1.0'
-      },
-      body: JSON.stringify({
-        query: testQuery
-      })
+    // Use the correct P&W API format
+    const testUrl = new URL('https://api.politicsandwar.com/graphql')
+    testUrl.searchParams.set('api_key', apiKey)
+    testUrl.searchParams.set('query', testQuery)
+
+    console.log('Request URL:', testUrl.toString())
+
+    const response = await fetch(testUrl.toString(), {
+      method: 'GET',
     })
 
     console.log('Response status:', response.status)

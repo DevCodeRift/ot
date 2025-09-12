@@ -11,6 +11,7 @@ declare module "next-auth" {
       pwNationId?: number
       pwNationName?: string
       currentAllianceId?: number
+      isAdmin?: boolean
     } & DefaultSession["user"]
   }
 
@@ -21,6 +22,7 @@ declare module "next-auth" {
     pwNationId?: number
     pwNationName?: string
     currentAllianceId?: number
+    isAdmin?: boolean
   }
 }
 
@@ -33,5 +35,6 @@ declare module "next-auth/jwt" {
     pwNationId?: number
     pwNationName?: string
     currentAllianceId?: number
+    isAdmin?: boolean
   }
 }

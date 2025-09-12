@@ -4,14 +4,15 @@ import { authOptions } from '@/lib/auth'
 
 interface AllianceLayoutProps {
   children: React.ReactNode
-  params: {
+  params: Promise<{
     allianceId: string
-  }
+  }>
 }
 
 export default async function AllianceLayout({ children, params }: AllianceLayoutProps) {
   const session = await getServerSession(authOptions)
-  const allianceId = parseInt(params.allianceId)
+  const { allianceId: allianceIdParam } = await params
+  const allianceId = parseInt(allianceIdParam)
   
   // Basic authentication check
   if (!session) {

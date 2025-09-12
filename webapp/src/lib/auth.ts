@@ -29,6 +29,7 @@ export const authOptions: NextAuthOptions = {
             pwNationId: true,
             pwNationName: true,
             currentAllianceId: true,
+            isAdmin: true,
           }
         })
 
@@ -39,6 +40,7 @@ export const authOptions: NextAuthOptions = {
           token.pwNationId = dbUser.pwNationId
           token.pwNationName = dbUser.pwNationName
           token.currentAllianceId = dbUser.currentAllianceId
+          token.isAdmin = dbUser.isAdmin
         }
         
         return token
@@ -57,6 +59,7 @@ export const authOptions: NextAuthOptions = {
             pwNationId: true,
             pwNationName: true,
             currentAllianceId: true,
+            isAdmin: true,
           }
         })
 
@@ -67,6 +70,7 @@ export const authOptions: NextAuthOptions = {
           token.pwNationId = dbUser.pwNationId
           token.pwNationName = dbUser.pwNationName
           token.currentAllianceId = dbUser.currentAllianceId
+          token.isAdmin = dbUser.isAdmin
         }
 
         // Store Discord info if this is a new login
@@ -93,6 +97,7 @@ export const authOptions: NextAuthOptions = {
         session.user.pwNationId = token.pwNationId
         session.user.pwNationName = token.pwNationName
         session.user.currentAllianceId = token.currentAllianceId
+        session.user.isAdmin = token.isAdmin
       }
       return session
     },

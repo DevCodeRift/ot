@@ -6,14 +6,15 @@ import { getUserAvailableModules } from '@/lib/module-access'
 import Link from 'next/link'
 
 interface DashboardPageProps {
-  params: {
+  params: Promise<{
     allianceId: string
-  }
+  }>
 }
 
 export default async function AllianceDashboardPage({ params }: DashboardPageProps) {
   const session = await getServerSession(authOptions)
-  const allianceId = parseInt(params.allianceId)
+  const { allianceId: allianceIdParam } = await params
+  const allianceId = parseInt(allianceIdParam)
   
   if (!session) {
     redirect('/auth/signin')

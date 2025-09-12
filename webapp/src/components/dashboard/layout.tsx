@@ -1,7 +1,7 @@
 'use client'
 
 import { useSession, signOut } from 'next-auth/react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   Home, 
   Users, 
@@ -18,7 +18,31 @@ import {
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  allianceId?: number
+  allianceId: number
+}
+
+// Client-side only timestamp to avoid hydration mismatch
+function ClientTimestamp() {
+  const [timestamp, setTimestamp] = useState<string>('')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    const updateTimestamp = () => {
+      setTimestamp(new Date().toLocaleString())
+    }
+    
+    updateTimestamp()
+    const interval = setInterval(updateTimestamp, 1000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!mounted) {
+    return <div className="text-sm text-cp-text-muted">Loading...</div>
+  }
+
+  return <div className="text-sm text-cp-text-muted">{timestamp}</div>
 }
 
 export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) {
@@ -35,8 +59,15 @@ export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) 
     { name: 'Economic Tools', href: `/${currentAllianceId}/modules/banking`, icon: DollarSign, current: false },
     { name: 'Analytics', href: `/${currentAllianceId}/modules/analytics`, icon: BarChart3, current: false },
     { name: 'Recruitment', href: `/${currentAllianceId}/modules/recruitment`, icon: UserPlus, current: false },
-    { name: 'Administration', href: '/admin/modules', icon: Settings, current: false },
+    { name: 'Module Administration', href: '/admin/modules', icon: Settings, current: false },
   ]
+
+  // Add global admin navigation if user is admin
+  if (session?.user?.isAdmin) {
+    navigation.push(
+      { name: 'Alliance Management', href: '/admin/alliances', icon: Shield, current: false }
+    )
+  }
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/auth/signin' })
@@ -144,9 +175,7 @@ export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) 
                 </div>
               </div>
               
-              <div className="text-sm text-cp-text-muted">
-                {new Date().toLocaleString()}
-              </div>
+              <ClientTimestamp />
             </div>
           </div>
         </div>

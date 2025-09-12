@@ -62,6 +62,9 @@ model User {
   auditLogs              AuditLog[]
   createdTaxBrackets     TaxBracket[] @relation("TaxBracketCreator")
   modifiedTaxBrackets    TaxBracket[] @relation("TaxBracketModifier")
+  allianceAdminRoles     AllianceAdmin[]
+  memberHoldings         MemberHolding[]
+  holdingTransactions    HoldingTransaction[]
 
   @@map("users")
 }
@@ -101,6 +104,9 @@ model Alliance {
   bankRecords     Bankrec[] @relation("AllianceBankRecords")
   allianceModules AllianceModule[]
   discordServers  DiscordServer[]
+  allianceAdmins  AllianceAdmin[]
+  apiKey          AllianceApiKey?
+  memberHoldings  MemberHolding[]
 
   // Bank resources
   money           Float?
@@ -117,6 +123,41 @@ model Alliance {
   food            Float?
 
   @@map("alliances")
+}
+
+// Alliance Administration System
+model AllianceAdmin {
+  id              String    @id @default(cuid())
+  allianceId      Int
+  userId          String    // User who is an admin for this alliance
+  discordId       String    // Discord ID of the admin
+  role            String    @default("admin") // admin, owner, etc.
+  permissions     String[]  // Array of permission strings
+  addedBy         String    // User ID who added this admin
+  addedAt         DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  
+  alliance        Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([allianceId, userId])
+  @@map("alliance_admins")
+}
+
+// Alliance API Keys for P&W Integration
+model AllianceApiKey {
+  id              String    @id @default(cuid())
+  allianceId      Int       @unique
+  apiKey          String    @db.Text
+  keyName         String?   // Optional name for the key
+  addedBy         String    // Admin who added this key
+  addedAt         DateTime  @default(now())
+  lastUsed        DateTime?
+  isActive        Boolean   @default(true)
+  
+  alliance        Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  
+  @@map("alliance_api_keys")
 }
 
 model Nation {
@@ -405,4 +446,72 @@ model AuditLog {
   user            User?     @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+// Member Holdings System - Virtual Bank Accounts
+model MemberHolding {
+  id              String    @id @default(cuid())
+  userId          String    // User who owns this holding
+  allianceId      Int       // Alliance where the holding is managed
+  
+  // Current balances in holdings
+  money           Float     @default(0)
+  coal            Float     @default(0)
+  oil             Float     @default(0)
+  uranium         Float     @default(0)
+  iron            Float     @default(0)
+  bauxite         Float     @default(0)
+  lead            Float     @default(0)
+  gasoline        Float     @default(0)
+  munitions       Float     @default(0)
+  steel           Float     @default(0)
+  aluminum        Float     @default(0)
+  food            Float     @default(0)
+  
+  // Lifetime totals for auditing
+  totalDeposited  Float     @default(0) // Total money value deposited
+  totalWithdrawn  Float     @default(0) // Total money value withdrawn
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alliance        Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  transactions    HoldingTransaction[]
+
+  @@unique([userId, allianceId])
+  @@map("member_holdings")
+}
+
+// Transaction log for holdings deposits/withdrawals
+model HoldingTransaction {
+  id              String    @id @default(cuid())
+  holdingId       String    // Reference to the member holding
+  userId          String    // User who performed the transaction
+  type            String    // 'deposit' or 'withdraw'
+  
+  // Resources involved in transaction
+  money           Float?
+  coal            Float?
+  oil             Float?
+  uranium         Float?
+  iron            Float?
+  bauxite         Float?
+  lead            Float?
+  gasoline        Float?
+  munitions       Float?
+  steel           Float?
+  aluminum        Float?
+  food            Float?
+  
+  // P&W bank record reference if applicable
+  pwBankRecordId  Int?      // P&W Bank Record ID for real transactions
+  note            String?   // Transaction note
+  
+  createdAt       DateTime  @default(now())
+
+  holding         MemberHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("holding_transactions")
 }
