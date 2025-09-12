@@ -4,6 +4,93 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PoliticsWarAPI } from '@/lib/politics-war-api';
 
+// Activity detection function
+async function checkNationActivity(pwApi: PoliticsWarAPI, nationId: number, daysBack: number = 7): Promise<{
+  isActive: boolean;
+  activityScore: number;
+  tradeCount: number;
+  bankRecordCount: number;
+  details: string;
+}> {
+  try {
+    const formatDateForPW = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - daysBack);
+    const formattedDate = formatDateForPW(daysAgo);
+
+    // Check trades
+    const tradesQuery = `
+      query GetRecentTrades($nationId: [Int], $after: DateTime) {
+        trades(nation_id: $nationId, after: $after, first: 50) {
+          data {
+            id
+            accepted
+          }
+        }
+      }
+    `;
+
+    // Check bank records
+    const bankQuery = `
+      query GetBankRecords($nationId: [Int], $after: DateTime) {
+        bankrecs(or_id: $nationId, after: $after, first: 50) {
+          data {
+            id
+          }
+        }
+      }
+    `;
+
+    const [tradesResult, bankResult] = await Promise.all([
+      pwApi.request(tradesQuery, { nationId: [nationId], after: formattedDate }).catch(() => ({ trades: { data: [] } })),
+      pwApi.request(bankQuery, { nationId: [nationId], after: formattedDate }).catch(() => ({ bankrecs: { data: [] } }))
+    ]);
+
+    const trades = (tradesResult as any)?.trades?.data || [];
+    const bankRecords = (bankResult as any)?.bankrecs?.data || [];
+    
+    const tradeCount = trades.length;
+    const bankRecordCount = bankRecords.length;
+    const activityScore = tradeCount + (bankRecordCount * 2); // Bank activity weighted higher
+
+    // Consider nation inactive if no economic activity in the timeframe
+    const isActive = activityScore > 0;
+    
+    let details = '';
+    if (isActive) {
+      details = `${tradeCount} trades, ${bankRecordCount} bank records`;
+    } else {
+      details = 'No recent economic activity';
+    }
+
+    return {
+      isActive,
+      activityScore,
+      tradeCount,
+      bankRecordCount,
+      details
+    };
+  } catch (error) {
+    console.log(`[Activity Check] Error checking activity for nation ${nationId}:`, error);
+    return {
+      isActive: true, // Default to active if check fails to avoid false negatives
+      activityScore: 0,
+      tradeCount: 0,
+      bankRecordCount: 0,
+      details: 'Activity check failed'
+    };
+  }
+}
+
 // Building production values per turn (approximate values)
 const BUILDING_PRODUCTION: { [key: string]: { resource: string; amount: number } } = {
   coal_mine: { resource: 'COAL', amount: 3 },
@@ -63,12 +150,19 @@ interface TargetNation {
   aircraft: number;
   ships: number;
   totalResourceValue: number;
+  originalResourceValue?: number; // Value before activity bonus
   dailyProduction: { [resource: string]: number };
   cityBuildings: CityBuildings[];
   last_active: string;
   beige_turns: number;
   color: string;
   vacation_mode_turns: number;
+  activityStatus?: {
+    isActive: boolean;
+    activityScore: number;
+    details: string;
+    valueBonus: string;
+  };
 }
 
 async function calculateNationValue(nation: any, marketPrices: { [resource: string]: number }): Promise<{
@@ -365,7 +459,18 @@ export async function GET(request: NextRequest) {
       if (excludeColors.includes(nation.color)) return null;
       if (nation.id === userNationId) return null; // Exclude the user's own nation
 
+      // Check economic activity (for inactive nation detection)
+      const activityCheck = await checkNationActivity(pwApi, nation.id, 7);
+      
       const { totalValue, dailyProduction, cityBuildings } = await calculateNationValue(nation, marketPrices);
+
+      // Boost value for inactive nations (they accumulate resources)
+      let adjustedValue = totalValue;
+      if (!activityCheck.isActive) {
+        // Inactive nations are more valuable as they accumulate resources without spending
+        adjustedValue = totalValue * 1.25; // 25% bonus for inactive nations
+        console.log(`[Raid Finder] Inactive nation ${nation.nation_name} gets value boost: ${totalValue} -> ${adjustedValue}`);
+      }
 
       const target: TargetNation = {
         id: nation.id,
@@ -379,13 +484,20 @@ export async function GET(request: NextRequest) {
         tanks: nation.tanks,
         aircraft: nation.aircraft,
         ships: nation.ships,
-        totalResourceValue: totalValue,
+        totalResourceValue: adjustedValue,
+        originalResourceValue: totalValue, // Keep track of original value
         dailyProduction,
         cityBuildings,
         last_active: nation.last_active,
         beige_turns: nation.beige_turns,
         color: nation.color,
         vacation_mode_turns: nation.vacation_mode_turns,
+        activityStatus: {
+          isActive: activityCheck.isActive,
+          activityScore: activityCheck.activityScore,
+          details: activityCheck.details,
+          valueBonus: !activityCheck.isActive ? '25%' : 'None'
+        }
       };
 
       return target;
