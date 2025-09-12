@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PoliticsWarAPI } from '@/lib/politics-war-api';
+import { checkModuleAccess } from '@/lib/module-access';
 
 // Advanced Raid Finder - Sophisticated target analysis system
 // Implements military target selection algorithms for Politics & War
@@ -262,6 +263,15 @@ function calculateLootTotal(nation: any): { lootTotal: number; debugBreakdown: a
 export async function GET(request: NextRequest) {
   try {
     console.log('[Raid Finder] Starting target analysis...');
+    
+    // Check module access first
+    const access = await checkModuleAccess('war')
+    
+    if (!access.hasAccess) {
+      return NextResponse.json({ 
+        error: access.error || 'Access denied to war module' 
+      }, { status: 403 })
+    }
     
     // Get session and verify authentication
     const session = await getServerSession(authOptions);

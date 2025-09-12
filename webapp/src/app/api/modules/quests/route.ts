@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { QUEST_METRICS, COMPARISON_LABELS } from '@/types/quests'
 import { checkAllianceAdminPermission } from '@/lib/alliance-admin'
+import { checkModuleAccess } from '@/lib/module-access'
 
 // Quest creation schema
 const createQuestSchema = z.object({
@@ -35,6 +36,15 @@ const updateQuestSchema = createQuestSchema.partial().omit({ allianceId: true })
 // GET /api/modules/quests - Get quests for alliance
 export async function GET(request: NextRequest) {
   try {
+    // Check module access first
+    const access = await checkModuleAccess('quests')
+    
+    if (!access.hasAccess) {
+      return NextResponse.json({ 
+        error: access.error || 'Access denied to quest module' 
+      }, { status: 403 })
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
@@ -165,6 +175,15 @@ export async function GET(request: NextRequest) {
 // POST /api/modules/quests - Create new quest
 export async function POST(request: NextRequest) {
   try {
+    // Check module access first
+    const access = await checkModuleAccess('quests')
+    
+    if (!access.hasAccess) {
+      return NextResponse.json({ 
+        error: access.error || 'Access denied to quest module' 
+      }, { status: 403 })
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {

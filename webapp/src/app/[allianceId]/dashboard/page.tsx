@@ -34,12 +34,18 @@ export default async function AllianceDashboardPage({ params }: DashboardPagePro
 
   const moduleColors = {
     'membership': 'cyan',
-    'war': 'red'
+    'war': 'red',
+    'economics': 'yellow',
+    'gamification': 'green',
+    'recruitment': 'purple'
   }
 
   const moduleIcons = {
     'membership': '👥',
-    'war': '⚔️'
+    'war': '⚔️',
+    'economics': '💰',
+    'gamification': '🏆',
+    'recruitment': '📋'
   }
 
   return (

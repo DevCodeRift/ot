@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkModuleAccess } from '@/lib/module-access'
 
 // GET /api/modules/economic/holdings - Get user's holdings balance
 export async function GET(request: NextRequest) {
   try {
+    // Check module access first
+    const access = await checkModuleAccess('banking')
+    
+    if (!access.hasAccess) {
+      return NextResponse.json({ 
+        error: access.error || 'Access denied to banking module' 
+      }, { status: 403 })
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
@@ -20,21 +30,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Fetching holdings for user', session.user.id, 'in alliance', allianceId)
-
-    // Check if user has access to the banking module for this alliance
-    const moduleAccess = await prisma.allianceModule.findFirst({
-      where: {
-        allianceId: parseInt(allianceId),
-        moduleId: 'banking',
-        enabled: true
-      }
-    })
-
-    if (!moduleAccess) {
-      return NextResponse.json({ 
-        error: 'Banking module not enabled for this alliance' 
-      }, { status: 403 })
-    }
 
     // Get or create user's holdings for this alliance
     let holdings = await prisma.memberHolding.findUnique({

@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkModuleAccess } from '@/lib/module-access'
 
 // GET /api/modules/membership/members - Fetch alliance members using the alliance API key
 export async function GET(request: NextRequest) {
   try {
+    // Check module access first
+    const access = await checkModuleAccess('membership')
+    
+    if (!access.hasAccess) {
+      return NextResponse.json({ 
+        error: access.error || 'Access denied to membership module' 
+      }, { status: 403 })
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {

@@ -1,8 +1,4 @@
-// Seed script to create the core modules
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
-
+// Show available modules without database connection
 const modules = [
   {
     id: 'membership',
@@ -48,50 +44,14 @@ const modules = [
   }
 ]
 
-async function seedModules() {
-  try {
-    console.log('🌱 Seeding core alliance modules...')
-    
-    for (const module of modules) {
-      const result = await prisma.module.upsert({
-        where: { id: module.id },
-        update: {
-          name: module.name,
-          description: module.description,
-          category: module.category,
-          requiredPerms: module.requiredPerms,
-          isActive: true,
-        },
-        create: {
-          id: module.id,
-          name: module.name,
-          description: module.description,
-          category: module.category,
-          requiredPerms: module.requiredPerms,
-          isActive: true,
-        },
-      })
-      
-      console.log(`✅ ${result.name} (${result.id})`)
-    }
-    
-    console.log('\n🎉 Core modules seeded successfully!')
-    
-    // Show all modules
-    const allModules = await prisma.module.findMany({
-      orderBy: { name: 'asc' }
-    })
-    
-    console.log('\n📋 Available modules:')
-    allModules.forEach(module => {
-      console.log(`  • ${module.name} (${module.id}) - ${module.category}`)
-    })
-    
-  } catch (error) {
-    console.error('❌ Error seeding modules:', error)
-  } finally {
-    await prisma.$disconnect()
-  }
-}
+console.log('📋 Available Modules:')
+console.log('==================')
+modules.forEach((module, index) => {
+  console.log(`${index + 1}. ${module.name} (${module.id})`)
+  console.log(`   Category: ${module.category}`)
+  console.log(`   Description: ${module.description}`)
+  console.log(`   Permissions: ${module.requiredPerms.join(', ')}`)
+  console.log('')
+})
 
-seedModules()
+console.log(`Total modules: ${modules.length}`)
