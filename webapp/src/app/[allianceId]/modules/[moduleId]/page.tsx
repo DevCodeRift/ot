@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/dashboard/layout'
 import { checkModuleAccess } from '@/lib/module-access'
 import { MembershipModule } from '@/components/modules/membership'
 import { EconomicToolsModule } from '@/components/modules/economic'
+import WarModule from '@/components/modules/war'
 
 interface ModulePageProps {
   params: Promise<{
@@ -69,6 +70,8 @@ export default async function ModulePage({ params }: ModulePageProps) {
         return <EconomicToolsModule allianceId={allianceId} />
       
       case 'war':
+        return <WarModule />
+      
       case 'banking':
       case 'recruitment':
       case 'quests':
