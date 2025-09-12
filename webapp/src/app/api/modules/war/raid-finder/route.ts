@@ -142,11 +142,14 @@ async function calculateNationValue(nation: any, marketPrices: { [resource: stri
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('[Raid Finder] API called');
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+      console.log('[Raid Finder] No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('[Raid Finder] Session found for user:', session.user.id);
     const searchParams = request.nextUrl.searchParams;
     const allianceId = searchParams.get('allianceId');
     const minActivity = parseInt(searchParams.get('minActivity') || '7'); // Days
@@ -155,7 +158,10 @@ export async function GET(request: NextRequest) {
     const excludeVacation = searchParams.get('excludeVacation') === 'true';
     const excludeBeige = searchParams.get('excludeBeige') === 'true';
 
+    console.log('[Raid Finder] Filters:', { allianceId, minActivity, excludeAlliances, excludeColors, excludeVacation, excludeBeige });
+
     if (!allianceId) {
+      console.log('[Raid Finder] No alliance ID provided');
       return NextResponse.json({ error: 'Alliance ID is required' }, { status: 400 });
     }
 
@@ -165,7 +171,10 @@ export async function GET(request: NextRequest) {
       select: { pwApiKey: true, pwNationId: true }
     });
 
+    console.log('[Raid Finder] User data:', { hasApiKey: !!user?.pwApiKey, nationId: user?.pwNationId });
+
     if (!user?.pwNationId) {
+      console.log('[Raid Finder] User nation ID not found');
       return NextResponse.json({ error: 'User nation ID not found in profile' }, { status: 404 });
     }
 
@@ -174,6 +183,7 @@ export async function GET(request: NextRequest) {
     let apiKey = user?.pwApiKey;
     
     if (!apiKey) {
+      console.log('[Raid Finder] No API key found for user');
       return NextResponse.json({
         error: 'API key required. Please set your personal API key in your profile.',
         requiresApiKey: true
@@ -182,6 +192,8 @@ export async function GET(request: NextRequest) {
 
     // Initialize P&W API client
     const pwApi = new PoliticsWarAPI(apiKey!);
+
+    console.log('[Raid Finder] Fetching user nation data for ID:', userNationId);
 
     // Get user's nation to determine war score range using GraphQL query
     const userNationQuery = `
@@ -198,15 +210,21 @@ export async function GET(request: NextRequest) {
     `;
 
     const userNationResult = await pwApi.request(userNationQuery, { id: [parseInt(userNationId)] }) as any;
+    console.log('[Raid Finder] User nation result:', userNationResult);
     const userNation = userNationResult?.nations?.data?.[0];
     
     if (!userNation) {
+      console.log('[Raid Finder] User nation not found in API response');
       return NextResponse.json({ error: 'User nation not found' }, { status: 404 });
     }
+
+    console.log('[Raid Finder] User nation found:', userNation.nation_name, 'Score:', userNation.score);
 
     const userScore = userNation.score;
     const minScore = userScore * 0.75; // 75% of user's score
     const maxScore = userScore * 2.0; // 200% of user's score
+
+    console.log('[Raid Finder] Score range:', { userScore, minScore, maxScore });
 
     // Get current market prices using top_trade_info query
     const marketQuery = `
@@ -244,14 +262,16 @@ export async function GET(request: NextRequest) {
     const activityDate = new Date();
     activityDate.setDate(activityDate.getDate() - minActivity);
 
+    console.log('[Raid Finder] Fetching potential targets with filters:', {
+      minScore, maxScore, activeSince: activityDate.toISOString()
+    });
+
     // Get potential targets with their cities using GraphQL query
     const targetsQuery = `
-      query GetPotentialTargets($minScore: Float, $maxScore: Float, $minCities: Int, $maxCities: Int, $activeSince: DateTime) {
+      query GetPotentialTargets($minScore: Float, $maxScore: Float, $activeSince: DateTime) {
         nations(
           min_score: $minScore, 
           max_score: $maxScore, 
-          min_cities: $minCities, 
-          max_cities: $maxCities,
           active_since: $activeSince,
           first: 100
         ) {
@@ -312,7 +332,14 @@ export async function GET(request: NextRequest) {
       activeSince: activityDate.toISOString()
     }) as any;
 
+    console.log('[Raid Finder] Targets query result:', {
+      hasData: !!targetsResult?.nations?.data,
+      count: targetsResult?.nations?.data?.length || 0,
+      error: targetsResult?.error || targetsResult?.errors
+    });
+
     if (!targetsResult?.nations?.data) {
+      console.log('[Raid Finder] No targets data returned from API');
       return NextResponse.json({ error: 'Failed to fetch potential targets' }, { status: 500 });
     }
 
@@ -379,9 +406,13 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Raid finder error:', error);
+    console.error('[Raid Finder] Error occurred:', error);
+    if (error instanceof Error) {
+      console.error('[Raid Finder] Error message:', error.message);
+      console.error('[Raid Finder] Error stack:', error.stack);
+    }
     return NextResponse.json(
-      { error: 'Failed to find raid targets' },
+      { error: 'Failed to find raid targets', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
