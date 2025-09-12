@@ -72,13 +72,13 @@ export default function LocutusRaidFinder() {
     
     try {
       const params = new URLSearchParams({
-        numResults: numResults.toString(),
-        weakground: weakground.toString(),
-        activeTimeCutoff: activeTimeCutoff.toString(),
-        beigeTurns: beigeTurns.toString(),
-        vmTurns: vmTurns.toString(),
-        defensiveSlots: defensiveSlots.toString(),
-        minLoot: minLoot.toString()
+        numResults: (numResults || 5).toString(),
+        weakground: (weakground || false).toString(),
+        activeTimeCutoff: (activeTimeCutoff || 10000).toString(),
+        beigeTurns: (beigeTurns || -1).toString(),
+        vmTurns: (vmTurns || 0).toString(),
+        defensiveSlots: (defensiveSlots || -1).toString(),
+        minLoot: (minLoot || 0).toString()
       });
 
       const response = await fetch(`/api/modules/war/raid?${params}`);
@@ -98,6 +98,9 @@ export default function LocutusRaidFinder() {
   };
 
   const formatNumber = (num: number) => {
+    if (!num || num === null || num === undefined) {
+      return '0';
+    }
     if (num >= 1000000) {
       return `${(num / 1000000).toFixed(1)}M`;
     } else if (num >= 1000) {
@@ -107,6 +110,9 @@ export default function LocutusRaidFinder() {
   };
 
   const formatTimeAgo = (minutes: number) => {
+    if (!minutes || minutes === null || minutes === undefined) {
+      return 'Unknown';
+    }
     if (minutes < 60) {
       return `${minutes}m ago`;
     } else if (minutes < 1440) {
@@ -221,22 +227,22 @@ export default function LocutusRaidFinder() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="text-gray-400">Nation:</span>
-                  <p className="text-white font-medium">{results.userNation.name}</p>
+                  <p className="text-white font-medium">{results.userNation?.name || 'Unknown'}</p>
                 </div>
                 <div>
                   <span className="text-gray-400">Score:</span>
-                  <p className="text-white font-medium">{results.userNation.score.toFixed(2)}</p>
+                  <p className="text-white font-medium">{(results.userNation?.score || 0).toFixed(2)}</p>
                 </div>
                 <div>
                   <span className="text-gray-400">Range:</span>
                   <p className="text-white font-medium">
-                    {results.userNation.scoreRange.min.toFixed(2)} - {results.userNation.scoreRange.max.toFixed(2)}
+                    {(results.userNation?.scoreRange?.min || 0).toFixed(2)} - {(results.userNation?.scoreRange?.max || 0).toFixed(2)}
                   </p>
                 </div>
                 <div>
                   <span className="text-gray-400">Military:</span>
                   <p className="text-white font-medium">
-                    {formatNumber(results.userNation.military.soldiers)}👥 {formatNumber(results.userNation.military.tanks)}🚗 {formatNumber(results.userNation.military.aircraft)}✈️ {formatNumber(results.userNation.military.ships)}🚢
+                    {formatNumber(results.userNation?.military?.soldiers || 0)}👥 {formatNumber(results.userNation?.military?.tanks || 0)}🚗 {formatNumber(results.userNation?.military?.aircraft || 0)}✈️ {formatNumber(results.userNation?.military?.ships || 0)}🚢
                   </p>
                 </div>
               </div>
@@ -257,10 +263,10 @@ export default function LocutusRaidFinder() {
                         <span className="text-xl font-bold text-cyan-400">#{index + 1}</span>
                         <div>
                           <h4 className="text-lg font-semibold text-white">
-                            {target.nation_name}
+                            {target.nation_name || 'Unknown Nation'}
                           </h4>
                           <p className="text-sm text-gray-400">
-                            {target.leader_name} | {target.alliance_name} | Score: {target.score.toFixed(2)}
+                            {target.leader_name || 'Unknown Leader'} | {target.alliance_name || 'No Alliance'} | Score: {(target.score || 0).toFixed(2)}
                           </p>
                         </div>
                       </div>
@@ -269,39 +275,39 @@ export default function LocutusRaidFinder() {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
                         <div>
                           <span className="text-gray-400">Cities:</span>
-                          <span className="text-white ml-1 font-medium">{target.cities}</span>
+                          <span className="text-white ml-1 font-medium">{target.cities || 0}</span>
                         </div>
                         <div>
                           <span className="text-gray-400">Military:</span>
                           <div className="text-white">
-                            {formatNumber(target.soldiers)}👥 {formatNumber(target.tanks)}🚗
+                            {formatNumber(target.soldiers || 0)}👥 {formatNumber(target.tanks || 0)}🚗
                           </div>
                           <div className="text-white">
-                            {formatNumber(target.aircraft)}✈️ {formatNumber(target.ships)}🚢
+                            {formatNumber(target.aircraft || 0)}✈️ {formatNumber(target.ships || 0)}🚢
                           </div>
                         </div>
                         <div>
                           <span className="text-gray-400">Loot:</span>
                           <span className="text-white ml-1 font-medium">
-                            ${formatNumber(target.lootTotal)}
+                            ${formatNumber(target.lootTotal || 0)}
                           </span>
                         </div>
                         <div>
                           <span className="text-gray-400">Activity:</span>
                           <span className={`ml-1 font-medium ${target.isActive ? 'text-red-400' : 'text-green-400'}`}>
-                            {formatTimeAgo(target.activityMinutes)}
+                            {formatTimeAgo(target.activityMinutes || 0)}
                           </span>
                         </div>
                       </div>
 
                       {/* Raid Advice */}
-                      {target.raidAdvice.length > 0 && (
+                      {target.raidAdvice && target.raidAdvice.length > 0 && (
                         <div className="mb-3">
                           <span className="text-gray-400 text-sm">Advice:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {target.raidAdvice.map((advice, i) => (
                               <span key={i} className="text-xs bg-cyan-900 text-cyan-300 px-2 py-1 rounded">
-                                {advice}
+                                {advice || 'No advice'}
                               </span>
                             ))}
                           </div>
@@ -312,16 +318,16 @@ export default function LocutusRaidFinder() {
                       <div className="text-sm">
                         <span className="text-gray-400">Wars:</span>
                         <span className="text-white ml-1">
-                          {target.defWars} defensive
+                          {target.defWars || 0} defensive
                         </span>
-                        {target.beige_turns > 0 && (
+                        {(target.beige_turns || 0) > 0 && (
                           <span className="text-yellow-400 ml-2">
-                            Beige: {target.beige_turns} turns
+                            Beige: {target.beige_turns || 0} turns
                           </span>
                         )}
-                        {target.vacation_mode_turns > 0 && (
+                        {(target.vacation_mode_turns || 0) > 0 && (
                           <span className="text-orange-400 ml-2">
-                            VM: {target.vacation_mode_turns} turns
+                            VM: {target.vacation_mode_turns || 0} turns
                           </span>
                         )}
                       </div>
@@ -330,7 +336,7 @@ export default function LocutusRaidFinder() {
                     {/* Target Score */}
                     <div className="text-right">
                       <div className="text-2xl font-bold text-cyan-400">
-                        {target.targetScore.toFixed(1)}
+                        {(target.targetScore || 0).toFixed(1)}
                       </div>
                       <div className="text-sm text-gray-400">
                         Target Score
@@ -345,13 +351,13 @@ export default function LocutusRaidFinder() {
             <div className="bg-gray-800 border border-gray-600 rounded-lg p-4">
               <h4 className="font-semibold text-white mb-2">Search Results</h4>
               <p className="text-sm text-gray-400">
-                Implementation: {results.metadata.implementation}
+                Implementation: {results.metadata?.implementation || 'Unknown'}
               </p>
               <p className="text-sm text-gray-400">
-                Found {results.metadata.totalFound} potential targets after filtering
+                Found {results.metadata?.totalFound || 0} potential targets after filtering
               </p>
               <div className="text-xs text-gray-500 mt-2">
-                Filters: {results.metadata.filteringApplied.join(', ')}
+                Filters: {results.metadata?.filteringApplied?.join(', ') || 'None'}
               </div>
             </div>
           </>
