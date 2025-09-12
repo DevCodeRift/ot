@@ -49,21 +49,28 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Get user's P&W API key and nation info
+    // Get user's nation info
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { pwApiKey: true, pwNationId: true }
+      select: { pwNationId: true }
     })
-
-    if (!user?.pwApiKey) {
-      return NextResponse.json({ 
-        error: 'Politics & War API key not configured. Please set up your API key first.' 
-      }, { status: 400 })
-    }
 
     if (!user?.pwNationId) {
       return NextResponse.json({ 
         error: 'Nation ID not found. Please link your P&W account.' 
+      }, { status: 400 })
+    }
+
+    // Check if alliance has API access configured (alliance officers/leaders only)
+    const allianceApiKey = await prisma.allianceApiKey.findUnique({
+      where: { allianceId: parseInt(allianceId) },
+      select: { apiKey: true }
+    })
+
+    if (!allianceApiKey) {
+      return NextResponse.json({
+        error: 'Alliance API key not configured. Bank operations require alliance-level API access. Please contact your alliance leadership.',
+        requiresAllianceKey: true
       }, { status: 400 })
     }
 
@@ -109,8 +116,8 @@ export async function POST(request: NextRequest) {
     // Calculate money value of withdrawal for tracking
     const moneyValue = resources.money || 0
 
-    // Initialize P&W API client
-    const pwApi = new PoliticsWarAPI(user.pwApiKey)
+    // Initialize P&W API client with alliance API key
+    const pwApi = new PoliticsWarAPI(allianceApiKey.apiKey)
 
     try {
       // Make the actual withdrawal from P&W alliance bank
@@ -238,6 +245,15 @@ export async function POST(request: NextRequest) {
           error: 'Insufficient resources in alliance bank. Please check alliance bank balances.',
           details: pwError.message
         }, { status: 400 })
+      }
+
+      // Check for authentication/bot key errors
+      if (pwError.message?.includes('X-Bot-Key') || pwError.message?.includes('bot key') || pwError.message?.includes('verified bot')) {
+        return NextResponse.json({
+          error: 'Bank operations require a verified bot key. This feature requires special P&W API permissions that are only available to verified bots.',
+          details: 'Please contact your alliance leadership to set up proper bank access permissions.',
+          requiresBotKey: true
+        }, { status: 403 })
       }
 
       // Check for permission errors

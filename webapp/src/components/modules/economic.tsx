@@ -195,6 +195,23 @@ export function EconomicToolsModule({ allianceId }: EconomicToolsModuleProps) {
 
       if (!response.ok) {
         const errorData = await response.json()
+        
+        // Handle specific error types with more detailed messages
+        if (errorData.requiresBotKey) {
+          throw new Error(
+            `${errorData.error}\n\n` +
+            `Politics & War bank operations require verified bot keys that are only available to approved bots. ` +
+            `Your alliance may need to use alternative methods for bank transfers or contact P&W support for bot verification.`
+          )
+        }
+        
+        if (errorData.requiresAllianceKey) {
+          throw new Error(
+            `${errorData.error}\n\n` +
+            `Alliance API keys are required for bank operations. Please ask your alliance leadership to configure the alliance API key in the admin panel.`
+          )
+        }
+        
         throw new Error(errorData.error || `Failed to ${type}`)
       }
 
@@ -266,7 +283,7 @@ export function EconomicToolsModule({ allianceId }: EconomicToolsModuleProps) {
       {/* Error Display */}
       {error && (
         <div className="mb-6 cp-card bg-cp-red/10 border-cp-red p-4">
-          <p className="text-cp-red">{error}</p>
+          <div className="text-cp-red whitespace-pre-wrap">{error}</div>
         </div>
       )}
 

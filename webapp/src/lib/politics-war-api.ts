@@ -5,6 +5,7 @@ const POLITICS_WAR_GRAPHQL_URL = 'https://api.politicsandwar.com/graphql'
 export class PoliticsWarAPI {
   private client: GraphQLClient
   private apiKey: string
+  private botKey?: string
   private rateLimitInfo: {
     remaining: number
     resetTime: Date
@@ -13,8 +14,9 @@ export class PoliticsWarAPI {
     resetTime: new Date()
   }
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, botKey?: string) {
     this.apiKey = apiKey
+    this.botKey = botKey
     // Note: We're using direct fetch instead of GraphQLClient for Politics & War API
     this.client = new GraphQLClient(POLITICS_WAR_GRAPHQL_URL)
   }
@@ -39,40 +41,77 @@ export class PoliticsWarAPI {
     }
   }
 
-  async request<T>(query: string, variables?: any): Promise<T> {
+  async request<T>(query: string, variables?: any, useBotKey = false): Promise<T> {
     await this.checkRateLimit()
     
     try {
-      // Politics & War API expects the key as a URL parameter, not header
-      const url = new URL(POLITICS_WAR_GRAPHQL_URL)
-      url.searchParams.set('api_key', this.apiKey)
-      url.searchParams.set('query', query)
+      // Check if this is a mutation that requires bot key
+      const isMutation = query.trim().startsWith('mutation')
       
-      // Add variables if provided
-      if (variables) {
-        url.searchParams.set('variables', JSON.stringify(variables))
+      if (isMutation && useBotKey) {
+        // For mutations, use POST with bot key header
+        if (!this.botKey) {
+          throw new Error('Bot key required for bank operations. Please configure a verified bot key.')
+        }
+        
+        const response = await fetch(POLITICS_WAR_GRAPHQL_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Bot-Key': this.botKey,
+            'X-API-Key': this.apiKey
+          },
+          body: JSON.stringify({
+            query,
+            variables
+          })
+        })
+
+        this.updateRateLimit(response.headers)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        
+        if (data.errors) {
+          throw new Error(`GraphQL error: ${data.errors.map((e: any) => e.message).join(', ')}`)
+        }
+
+        return data.data
+      } else {
+        // For queries, use GET with API key in URL
+        const url = new URL(POLITICS_WAR_GRAPHQL_URL)
+        url.searchParams.set('api_key', this.apiKey)
+        url.searchParams.set('query', query)
+        
+        // Add variables if provided
+        if (variables) {
+          url.searchParams.set('variables', JSON.stringify(variables))
+        }
+        
+        console.log('P&W API URL:', url.toString())
+        console.log('API Key (first 10 chars):', this.apiKey.substring(0, 10))
+        
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+        })
+
+        this.updateRateLimit(response.headers)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+        
+        if (data.errors) {
+          throw new Error(`GraphQL error: ${data.errors.map((e: any) => e.message).join(', ')}`)
+        }
+
+        return data.data
       }
-      
-      console.log('P&W API URL:', url.toString())
-      console.log('API Key (first 10 chars):', this.apiKey.substring(0, 10))
-      
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-      })
-
-      this.updateRateLimit(response.headers)
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      
-      if (data.errors) {
-        throw new Error(`GraphQL error: ${data.errors.map((e: any) => e.message).join(', ')}`)
-      }
-
-      return data.data
     } catch (error) {
       console.error('Politics & War API request failed:', error)
       throw error
@@ -293,7 +332,7 @@ export class PoliticsWarAPI {
       }
     `
     
-    return this.request(mutation, params)
+    return this.request(mutation, params, true) // Use bot key for bank deposits
   }
 
   async bankWithdraw(params: {
@@ -373,6 +412,6 @@ export class PoliticsWarAPI {
       }
     `
     
-    return this.request(mutation, params)
+    return this.request(mutation, params, true) // Use bot key for bank withdrawals
   }
 }
