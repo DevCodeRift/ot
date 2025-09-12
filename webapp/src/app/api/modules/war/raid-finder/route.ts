@@ -148,43 +148,36 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const userNationId = searchParams.get('nationId');
     const allianceId = searchParams.get('allianceId');
     const minActivity = parseInt(searchParams.get('minActivity') || '7'); // Days
     const excludeAlliances = searchParams.get('excludeAlliances')?.split(',').filter(Boolean) || [];
     const excludeColors = searchParams.get('excludeColors')?.split(',').filter(Boolean) || [];
-    const minCities = parseInt(searchParams.get('minCities') || '1');
-    const maxCities = parseInt(searchParams.get('maxCities') || '50');
     const excludeVacation = searchParams.get('excludeVacation') === 'true';
     const excludeBeige = searchParams.get('excludeBeige') === 'true';
 
-    if (!userNationId || !allianceId) {
-      return NextResponse.json({ error: 'Nation ID and Alliance ID are required' }, { status: 400 });
+    if (!allianceId) {
+      return NextResponse.json({ error: 'Alliance ID is required' }, { status: 400 });
     }
 
-    // Get user's API key or alliance API key
+    // Get user's API key and nation ID from session/database
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { pwApiKey: true, pwNationId: true }
     });
 
+    if (!user?.pwNationId) {
+      return NextResponse.json({ error: 'User nation ID not found in profile' }, { status: 404 });
+    }
+
+    const userNationId = user.pwNationId.toString();
+
     let apiKey = user?.pwApiKey;
     
-    // If no user API key, try to get alliance API key
     if (!apiKey) {
-      const allianceApiKey = await prisma.allianceApiKey.findUnique({
-        where: { allianceId: parseInt(allianceId) },
-        select: { apiKey: true }
-      });
-      
-      if (!allianceApiKey) {
-        return NextResponse.json({
-          error: 'API key required. Please set your personal API key or ask your alliance leadership to configure an alliance API key.',
-          requiresApiKey: true
-        }, { status: 400 });
-      }
-      
-      apiKey = allianceApiKey.apiKey;
+      return NextResponse.json({
+        error: 'API key required. Please set your personal API key in your profile.',
+        requiresApiKey: true
+      }, { status: 400 });
     }
 
     // Initialize P&W API client
@@ -212,7 +205,7 @@ export async function GET(request: NextRequest) {
     }
 
     const userScore = userNation.score;
-    const minScore = userScore * 0.6; // 60% of user's score
+    const minScore = userScore * 0.75; // 75% of user's score
     const maxScore = userScore * 2.0; // 200% of user's score
 
     // Get current market prices using top_trade_info query
@@ -316,8 +309,6 @@ export async function GET(request: NextRequest) {
     const targetsResult = await pwApi.request(targetsQuery, {
       minScore,
       maxScore,
-      minCities,
-      maxCities,
       activeSince: activityDate.toISOString()
     }) as any;
 
@@ -381,8 +372,6 @@ export async function GET(request: NextRequest) {
           minActivity,
           excludeAlliances,
           excludeColors,
-          minCities,
-          maxCities,
           excludeVacation,
           excludeBeige
         }

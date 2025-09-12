@@ -28,8 +28,6 @@ interface RaidFinderFilters {
   minActivity: number;
   excludeAlliances: string[];
   excludeColors: string[];
-  minCities: number;
-  maxCities: number;
   excludeVacation: boolean;
   excludeBeige: boolean;
 }
@@ -58,8 +56,6 @@ export default function WarModule() {
     minActivity: 7,
     excludeAlliances: [],
     excludeColors: [],
-    minCities: 1,
-    maxCities: 50,
     excludeVacation: true,
     excludeBeige: false,
   });
@@ -73,11 +69,8 @@ export default function WarModule() {
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        nationId: '123456', // This should come from user session
-        allianceId: '790', // This should come from user alliance
+        allianceId: '790', // This should come from user alliance  
         minActivity: filters.minActivity.toString(),
-        minCities: filters.minCities.toString(),
-        maxCities: filters.maxCities.toString(),
         excludeVacation: filters.excludeVacation.toString(),
         excludeBeige: filters.excludeBeige.toString(),
       });
@@ -192,31 +185,13 @@ export default function WarModule() {
         </div>
         
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-cp-text-primary text-sm font-medium mb-1">Max Days Inactive</label>
               <input
                 type="number"
                 value={filters.minActivity}
                 onChange={(e) => updateFilter('minActivity', parseInt(e.target.value))}
-                className="w-full bg-cp-bg-tertiary border border-cp-border rounded px-3 py-2 text-cp-text-primary focus:border-cp-cyan focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-cp-text-primary text-sm font-medium mb-1">Min Cities</label>
-              <input
-                type="number"
-                value={filters.minCities}
-                onChange={(e) => updateFilter('minCities', parseInt(e.target.value))}
-                className="w-full bg-cp-bg-tertiary border border-cp-border rounded px-3 py-2 text-cp-text-primary focus:border-cp-cyan focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-cp-text-primary text-sm font-medium mb-1">Max Cities</label>
-              <input
-                type="number"
-                value={filters.maxCities}
-                onChange={(e) => updateFilter('maxCities', parseInt(e.target.value))}
                 className="w-full bg-cp-bg-tertiary border border-cp-border rounded px-3 py-2 text-cp-text-primary focus:border-cp-cyan focus:outline-none"
               />
             </div>
