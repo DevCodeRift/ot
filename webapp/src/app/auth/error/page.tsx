@@ -1,6 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
 const errorMessages = {
   Configuration: 'There is a problem with the server configuration.',
@@ -18,7 +19,7 @@ const errorMessages = {
   SessionRequired: 'You must be signed in to view this page.'
 }
 
-export default function AuthError() {
+function AuthErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
@@ -79,5 +80,17 @@ export default function AuthError() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-cp-bg-primary flex items-center justify-center">
+        <div className="text-cp-cyan">Loading...</div>
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   )
 }
