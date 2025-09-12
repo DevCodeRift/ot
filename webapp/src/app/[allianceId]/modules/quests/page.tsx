@@ -4,23 +4,11 @@ import QuestsModule from '@/components/modules/quests'
 interface PageProps {
   params: Promise<{
     allianceId: string
-    moduleId: string
   }>
 }
 
 export default async function QuestsModulePage({ params }: PageProps) {
-  const { allianceId, moduleId } = await params
-  
-  if (moduleId !== 'quests') {
-    return (
-      <div className="min-h-screen bg-cp-bg-primary flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-cp-text-primary mb-2">Module Not Found</h1>
-          <p className="text-cp-text-secondary">The requested module could not be found.</p>
-        </div>
-      </div>
-    )
-  }
+  const { allianceId } = await params
 
   return (
     <div className="min-h-screen bg-cp-bg-primary">

@@ -1,5 +1,9 @@
 // Enable all modules for Rose alliance (ID 790) for testing
+import { config } from 'dotenv'
 import { PrismaClient } from '@prisma/client'
+
+// Load environment variables
+config()
 
 const prisma = new PrismaClient()
 

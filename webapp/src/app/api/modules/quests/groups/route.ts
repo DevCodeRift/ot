@@ -237,3 +237,185 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+// PUT /api/modules/quests/groups - Update quest group
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const url = new URL(request.url)
+    const groupId = url.searchParams.get('id')
+    
+    if (!groupId) {
+      return NextResponse.json({ 
+        error: 'Quest group ID is required' 
+      }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const validatedData = updateQuestGroupSchema.parse(body)
+
+    // Get the quest group to check permissions
+    const existingGroup = await prisma.questGroup.findUnique({
+      where: { id: groupId }
+    })
+
+    if (!existingGroup) {
+      return NextResponse.json({ 
+        error: 'Quest group not found' 
+      }, { status: 404 })
+    }
+
+    // Check admin permissions
+    const isAdmin = await prisma.allianceAdmin.findFirst({
+      where: {
+        allianceId: existingGroup.allianceId,
+        userId: session.user.id,
+        isActive: true
+      }
+    })
+
+    if (!isAdmin) {
+      return NextResponse.json({ 
+        error: 'Admin access required' 
+      }, { status: 403 })
+    }
+
+    // Update quest group
+    const updatedGroup = await prisma.questGroup.update({
+      where: { id: groupId },
+      data: {
+        ...validatedData,
+        updatedAt: new Date()
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            discordUsername: true
+          }
+        },
+        _count: {
+          select: {
+            quests: true,
+            assignments: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      questGroup: {
+        id: updatedGroup.id,
+        name: updatedGroup.name,
+        description: updatedGroup.description,
+        icon: updatedGroup.icon,
+        color: updatedGroup.color,
+        isActive: updatedGroup.isActive,
+        displayOrder: updatedGroup.displayOrder,
+        questCount: updatedGroup._count.quests,
+        totalQuests: updatedGroup._count.quests,
+        activeAssignments: updatedGroup._count.assignments,
+        creator: updatedGroup.creator,
+        createdAt: updatedGroup.createdAt,
+        updatedAt: updatedGroup.updatedAt
+      }
+    })
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ 
+        error: 'Invalid request data',
+        details: error.issues
+      }, { status: 400 })
+    }
+
+    console.error('Quest group update error:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error' 
+    }, { status: 500 })
+  }
+}
+
+// DELETE /api/modules/quests/groups - Delete quest group
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const url = new URL(request.url)
+    const groupId = url.searchParams.get('id')
+    
+    if (!groupId) {
+      return NextResponse.json({ 
+        error: 'Quest group ID is required' 
+      }, { status: 400 })
+    }
+
+    // Get the quest group to check permissions
+    const existingGroup = await prisma.questGroup.findUnique({
+      where: { id: groupId },
+      include: {
+        _count: {
+          select: {
+            quests: true,
+            assignments: true
+          }
+        }
+      }
+    })
+
+    if (!existingGroup) {
+      return NextResponse.json({ 
+        error: 'Quest group not found' 
+      }, { status: 404 })
+    }
+
+    // Check admin permissions
+    const isAdmin = await prisma.allianceAdmin.findFirst({
+      where: {
+        allianceId: existingGroup.allianceId,
+        userId: session.user.id,
+        isActive: true
+      }
+    })
+
+    if (!isAdmin) {
+      return NextResponse.json({ 
+        error: 'Admin access required' 
+      }, { status: 403 })
+    }
+
+    // Check if group has active quests or assignments
+    if (existingGroup._count.quests > 0 || existingGroup._count.assignments > 0) {
+      return NextResponse.json({ 
+        error: 'Cannot delete quest group with active quests or assignments' 
+      }, { status: 400 })
+    }
+
+    // Delete quest group
+    await prisma.questGroup.delete({
+      where: { id: groupId }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Quest group deleted successfully'
+    })
+
+  } catch (error) {
+    console.error('Quest group deletion error:', error)
+    return NextResponse.json({ 
+      error: 'Internal server error' 
+    }, { status: 500 })
+  }
+}
