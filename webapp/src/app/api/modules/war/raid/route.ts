@@ -87,17 +87,54 @@ function calculateMilitaryStrength(nation: any): {
   };
 }
 
-// Realistic Locutus-style loot calculation 
+// Realistic Locutus-style loot calculation based on estimated production
 function calculateLootTotal(nation: any): number {
   const numCities = nation.num_cities || 0;
   
   if (numCities === 0) return 0;
   
-  // 1. CASH HOLDINGS - Nation's actual money (major component)
-  const cash = nation.money || 0;
-  const lootableCash = cash * 0.14; // Standard raid war takes 14% of cash
+  // Calculate average infrastructure from cities data
+  let avgInfra = 1000; // Default fallback
+  if (nation.cities && nation.cities.length > 0) {
+    const totalInfra = nation.cities.reduce((sum: number, city: any) => sum + (city.infrastructure || 0), 0);
+    avgInfra = totalInfra / nation.cities.length;
+  }
   
-  // 2. RESOURCE VALUES - Convert resources to cash using market values
+  // 1. ESTIMATED GROSS INCOME & CASH HOLDINGS
+  // P&W Gross Income formula: roughly $1,200 + (Infrastructure * $15) per city
+  // Plus commerce improvements, government bonuses, policies, etc.
+  const baseIncomePerCity = 1200 + (avgInfra * 15); // Base income per city
+  const commerceBonus = avgInfra * 5; // Estimate commerce improvements (higher infra = more commerce)
+  const policyBonus = baseIncomePerCity * 0.1; // Assume ~10% policy bonus on average
+  const grossIncomePerCity = baseIncomePerCity + commerceBonus + policyBonus;
+  
+  const totalGrossIncome = grossIncomePerCity * numCities;
+  const netIncomeAfterUpkeep = totalGrossIncome * 0.75; // Account for military/city upkeep
+  
+  // Estimate accumulated cash (assume nations save 7-14 days of net income)
+  const daysOfSavings = 7 + (avgInfra / 200); // Higher infra nations save more (7-12 days)
+  const estimatedCash = netIncomeAfterUpkeep * daysOfSavings;
+  const lootableCash = estimatedCash * 0.14; // 14% loot rate in raid wars
+  
+  // 2. ESTIMATED RESOURCE PRODUCTION - Based on infrastructure and cities
+  // Higher infra = more resource production per city
+  const resourceProductionFactor = avgInfra / 100; // Scale production with infra
+  
+  const estimatedDailyResources = {
+    coal: numCities * (8 + resourceProductionFactor * 2),
+    oil: numCities * (6 + resourceProductionFactor * 1.5),
+    uranium: numCities * (2 + resourceProductionFactor * 0.5),
+    iron: numCities * (8 + resourceProductionFactor * 2),
+    bauxite: numCities * (6 + resourceProductionFactor * 1.5),
+    lead: numCities * (4 + resourceProductionFactor * 1),
+    gasoline: numCities * (4 + resourceProductionFactor * 1),
+    munitions: numCities * (3 + resourceProductionFactor * 0.8),
+    steel: numCities * (3 + resourceProductionFactor * 0.8),
+    aluminum: numCities * (3 + resourceProductionFactor * 0.8),
+    food: numCities * (12 + resourceProductionFactor * 3)
+  };
+  
+  // Assume nations stockpile resources for 14 days on average
   const resourceValues = {
     coal: 1300,
     oil: 1400,
@@ -112,48 +149,79 @@ function calculateLootTotal(nation: any): number {
     food: 600
   };
   
-  let resourceValue = 0;
-  for (const [resource, value] of Object.entries(resourceValues)) {
-    const amount = nation[resource] || 0;
-    resourceValue += amount * value * 0.14; // 14% loot rate for resources
+  let estimatedResourceValue = 0;
+  for (const [resource, dailyProduction] of Object.entries(estimatedDailyResources)) {
+    const stockpile = dailyProduction * 14; // 14 days of stockpiling
+    const marketValue = resourceValues[resource as keyof typeof resourceValues];
+    estimatedResourceValue += stockpile * marketValue * 0.14; // 14% loot rate
   }
   
-  // 3. DAILY REVENUE ESTIMATION - Based on infrastructure and cities
-  // Calculate average infrastructure from cities data
-  let avgInfra = 1000; // Default fallback
-  if (nation.cities && nation.cities.length > 0) {
-    const totalInfra = nation.cities.reduce((sum: number, city: any) => sum + (city.infrastructure || 0), 0);
-    avgInfra = totalInfra / nation.cities.length;
-  }
+  // 3. INFRASTRUCTURE LOOT VALUE
+  // When you win wars, you can loot infrastructure improvements
+  const infraLootValue = avgInfra * numCities * 25; // $25 per infra point (infrastructure improvements)
   
-  const dailyRevenue = numCities * (avgInfra * 8 + 2000); // Rough estimation
-  const revenueComponent = dailyRevenue * 2; // Equivalent to ~2 days revenue
-  
-  // 4. INFRASTRUCTURE VALUE - High infra = high loot
-  const infraValue = avgInfra * numCities * 15; // $15 per infra point per city
-  
-  // 5. MILITARY EQUIPMENT VALUE (if they get zeroed)
+  // 4. MILITARY EQUIPMENT VALUE (when units are destroyed)
   const soldiers = nation.soldiers || 0;
   const tanks = nation.tanks || 0;
   const aircraft = nation.aircraft || 0;
   const ships = nation.ships || 0;
   
   const militaryValue = (soldiers * 5) + (tanks * 60) + (aircraft * 4000) + (ships * 50000);
-  const lootableMilitary = militaryValue * 0.25; // Some military losses = loot
+  const lootableMilitary = militaryValue * 0.30; // 30% of military value as loot
   
-  // 6. SCORE-BASED MULTIPLIER (higher score = more valuable)
+  // 5. SCORE-BASED WEALTH MULTIPLIER & NATION FACTORS
+  // Higher score nations are generally wealthier and more established
   const score = nation.score || 0;
-  const scoreMultiplier = 1 + (score / 5000); // 1.2x at 1000 score, 1.4x at 2000 score, etc.
+  let wealthMultiplier = 1 + Math.log10(Math.max(score / 100, 1)); // Logarithmic wealth scaling
+  
+  // Color bonuses affect wealth accumulation
+  const color = nation.color?.toLowerCase();
+  if (color === 'gray' || color === 'beige') {
+    wealthMultiplier *= 0.8; // New/recovering nations have less wealth
+  } else if (color === 'green' || color === 'blue') {
+    wealthMultiplier *= 1.1; // Peaceful colors accumulate more wealth
+  }
+  
+  // Alliance membership typically means better resource access
+  if (nation.alliance_id && nation.alliance_id > 0) {
+    wealthMultiplier *= 1.15; // Alliance nations typically 15% wealthier
+  }
+  
+  // Nations in wars have reduced income and depleted resources
+  const numWars = nation.wars?.length || 0;
+  if (numWars > 0) {
+    wealthMultiplier *= Math.max(0.6, 1 - (numWars * 0.2)); // War penalty, minimum 60%
+  }
+  
+  // 6. BEIGE/INACTIVE BONUS
+  // Inactive nations accumulate more resources
+  const activity = calculateActivity(nation, 10000);
+  const inactivityBonus = activity.isActive ? 1.0 : 1.5; // 50% bonus for inactive nations
   
   // TOTAL LOOT CALCULATION
-  const baseLoot = lootableCash + resourceValue + revenueComponent + infraValue + lootableMilitary;
-  const totalLoot = baseLoot * scoreMultiplier;
+  const baseLoot = lootableCash + estimatedResourceValue + infraLootValue + lootableMilitary;
+  const adjustedLoot = baseLoot * wealthMultiplier * inactivityBonus;
   
-  // Add some randomness like real raiding (+/- 20%)
-  const randomFactor = 0.8 + (Math.random() * 0.4);
-  const finalLoot = totalLoot * randomFactor;
+  // Add some variance (+/- 15%)
+  const randomFactor = 0.85 + (Math.random() * 0.30);
+  const finalLoot = adjustedLoot * randomFactor;
   
-  console.log(`[Loot Debug] ${nation.nation_name}: cash=${Math.round(lootableCash)}, resources=${Math.round(resourceValue)}, revenue=${Math.round(revenueComponent)}, infra=${Math.round(infraValue)}, military=${Math.round(lootableMilitary)}, total=${Math.round(finalLoot)}`);
+  console.log(`[Loot Debug] ${nation.nation_name}: cities=${numCities}, avgInfra=${Math.round(avgInfra)}, estimatedCash=${Math.round(lootableCash)}, resources=${Math.round(estimatedResourceValue)}, infra=${Math.round(infraLootValue)}, military=${Math.round(lootableMilitary)}, multiplier=${Math.round(wealthMultiplier * 100)/100}, total=${Math.round(finalLoot)}`);
+  
+  // Detailed calculation breakdown for debugging
+  console.log(`[Loot Breakdown] ${nation.nation_name}:`);
+  console.log(`  → Base Income/City: $${Math.round(baseIncomePerCity).toLocaleString()}`);
+  console.log(`  → Total Gross Income: $${Math.round(totalGrossIncome).toLocaleString()}/day`);
+  console.log(`  → Net Income (after upkeep): $${Math.round(netIncomeAfterUpkeep).toLocaleString()}/day`);
+  console.log(`  → Days of Savings: ${Math.round(daysOfSavings * 10)/10}`);
+  console.log(`  → Estimated Cash: $${Math.round(estimatedCash).toLocaleString()}`);
+  console.log(`  → Lootable Cash (14%): $${Math.round(lootableCash).toLocaleString()}`);
+  console.log(`  → Resource Stockpile Value: $${Math.round(estimatedResourceValue).toLocaleString()}`);
+  console.log(`  → Infrastructure Loot: $${Math.round(infraLootValue).toLocaleString()}`);
+  console.log(`  → Military Equipment: $${Math.round(lootableMilitary).toLocaleString()}`);
+  console.log(`  → Wealth Multiplier: ${Math.round(wealthMultiplier * 100)/100}x (score: ${nation.score})`);
+  console.log(`  → Inactivity Bonus: ${Math.round(inactivityBonus * 100)/100}x`);
+  console.log(`  → Final Loot Total: $${Math.round(finalLoot).toLocaleString()}`);
   
   return Math.round(finalLoot);
 }
@@ -255,18 +323,6 @@ export async function GET(request: NextRequest) {
             aircraft
             ships
             spies
-            money
-            coal
-            oil
-            uranium
-            iron
-            bauxite
-            lead
-            gasoline
-            munitions
-            steel
-            aluminum
-            food
             last_active
             beige_turns
             color
