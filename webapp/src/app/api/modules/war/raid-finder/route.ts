@@ -261,9 +261,22 @@ export async function GET(request: NextRequest) {
     // Calculate activity date filter
     const activityDate = new Date();
     activityDate.setDate(activityDate.getDate() - minActivity);
+    
+    // Format date as YYYY-MM-DD HH:MM:SS for P&W API
+    const formatDateForPW = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+    
+    const formattedActivityDate = formatDateForPW(activityDate);
 
     console.log('[Raid Finder] Fetching potential targets with filters:', {
-      minScore, maxScore, activeSince: activityDate.toISOString()
+      minScore, maxScore, activeSince: formattedActivityDate
     });
 
     // Get potential targets with their cities using GraphQL query
@@ -329,7 +342,7 @@ export async function GET(request: NextRequest) {
     const targetsResult = await pwApi.request(targetsQuery, {
       minScore,
       maxScore,
-      activeSince: activityDate.toISOString()
+      activeSince: formattedActivityDate
     }) as any;
 
     console.log('[Raid Finder] Targets query result:', {
