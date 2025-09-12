@@ -15,13 +15,36 @@ interface TargetNation {
   tanks: number;
   aircraft: number;
   ships: number;
-  totalResourceValue: number;
-  dailyProduction: { [resource: string]: number };
-  cityBuildings: any[];
+  
+  // Enhanced Locutus-inspired data
+  totalValue: number;
+  accessibleValue: number;
+  accessibility: number;
+  activityScore: number;
+  activityFactors: {
+    loginActivity: number;
+    economicActivity: number;
+    warActivity: number;
+  };
+  militaryStrength: {
+    ground: number;
+    air: number;
+    naval: number;
+    total: number;
+  };
+  raidAnalysis: {
+    successChance: number;
+    recommendation: string;
+    risks: string[];
+  };
+  targetScore: number;
+  
   last_active: string;
   beige_turns: number;
   color: string;
   vacation_mode_turns: number;
+  wars: any[];
+  defensiveWars: number;
 }
 
 interface RaidFinderFilters {
@@ -30,34 +53,52 @@ interface RaidFinderFilters {
   excludeColors: string[];
   excludeVacation: boolean;
   excludeBeige: boolean;
+  
+  // Enhanced Locutus-inspired filters
+  weakGroundOnly: boolean;
+  maxDefensiveWars: number;
+  minGroundRatio: number;
+  minAirRatio: number;
+  minNavalRatio: number;
+  minSuccessChance: number;
+  minAccessibleValue: number;
 }
 
 interface RaidFinderResponse {
-  userNation: {
-    id: string;
-    name: string;
-    score: number;
-    scoreRange: { min: number; max: number };
-  };
   targets: TargetNation[];
-  marketPrices: { [resource: string]: number };
   metadata: {
-    totalFound: number;
-    searchCriteria: any;
+    userMilitary: {
+      soldiers: number;
+      tanks: number;
+      aircraft: number;
+      ships: number;
+    };
+    filters: any;
+    totalTargets: number;
+    raidAdvice: string[];
   };
 }
 
 export default function WarModule() {
   const [targets, setTargets] = useState<TargetNation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [userNation, setUserNation] = useState<any>(null);
-  const [marketPrices, setMarketPrices] = useState<{ [resource: string]: number }>({});
+  const [userMilitary, setUserMilitary] = useState<any>(null);
+  const [raidAdvice, setRaidAdvice] = useState<string[]>([]);
   const [filters, setFilters] = useState<RaidFinderFilters>({
     minActivity: 7,
     excludeAlliances: [],
     excludeColors: [],
     excludeVacation: true,
     excludeBeige: false,
+    
+    // Enhanced Locutus-inspired filters
+    weakGroundOnly: false,
+    maxDefensiveWars: 3,
+    minGroundRatio: 0.5,
+    minAirRatio: 0.5,
+    minNavalRatio: 0.5,
+    minSuccessChance: 0.6,
+    minAccessibleValue: 10000000, // 10M minimum accessible value
   });
 
   const [filterInputs, setFilterInputs] = useState({
@@ -73,6 +114,13 @@ export default function WarModule() {
         minActivity: filters.minActivity.toString(),
         excludeVacation: filters.excludeVacation.toString(),
         excludeBeige: filters.excludeBeige.toString(),
+        weakGroundOnly: filters.weakGroundOnly.toString(),
+        maxDefensiveWars: filters.maxDefensiveWars.toString(),
+        minGroundRatio: filters.minGroundRatio.toString(),
+        minAirRatio: filters.minAirRatio.toString(),
+        minNavalRatio: filters.minNavalRatio.toString(),
+        minSuccessChance: filters.minSuccessChance.toString(),
+        minAccessibleValue: filters.minAccessibleValue.toString(),
       });
 
       if (filters.excludeAlliances.length > 0) {
@@ -92,8 +140,8 @@ export default function WarModule() {
 
       const data: RaidFinderResponse = await response.json();
       setTargets(data.targets);
-      setUserNation(data.userNation);
-      setMarketPrices(data.marketPrices);
+      setUserMilitary(data.metadata.userMilitary);
+      setRaidAdvice(data.metadata.raidAdvice || []);
     } catch (error) {
       console.error('Error fetching targets:', error);
       // Handle error - maybe show a toast notification
