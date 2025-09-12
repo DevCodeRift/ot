@@ -119,7 +119,13 @@ function calculateLootTotal(nation: any): number {
   }
   
   // 3. DAILY REVENUE ESTIMATION - Based on infrastructure and cities
-  const avgInfra = nation.avg_infra || 1000;
+  // Calculate average infrastructure from cities data
+  let avgInfra = 1000; // Default fallback
+  if (nation.cities && nation.cities.length > 0) {
+    const totalInfra = nation.cities.reduce((sum: number, city: any) => sum + (city.infrastructure || 0), 0);
+    avgInfra = totalInfra / nation.cities.length;
+  }
+  
   const dailyRevenue = numCities * (avgInfra * 8 + 2000); // Rough estimation
   const revenueComponent = dailyRevenue * 2; // Equivalent to ~2 days revenue
   
@@ -244,7 +250,6 @@ export async function GET(request: NextRequest) {
             }
             score
             num_cities
-            avg_infra
             soldiers
             tanks
             aircraft
