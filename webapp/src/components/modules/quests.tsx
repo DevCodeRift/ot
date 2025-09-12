@@ -545,6 +545,284 @@ export default function QuestsModule({ allianceId }: QuestsModuleProps) {
         </div>
       )}
 
+      {/* Create Quest Modal */}
+      {showCreateQuest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="cp-card p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-cp-text-primary mb-4">Create Quest</h3>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Quest Name
+                  </label>
+                  <input
+                    type="text"
+                    value={questForm.name}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="cp-input"
+                    placeholder="e.g., Build 5 Cities"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Quest Group
+                  </label>
+                  <select
+                    value={questForm.questGroupId}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, questGroupId: e.target.value }))}
+                    className="cp-input"
+                  >
+                    <option value="">Select a group...</option>
+                    {questGroups.map(group => (
+                      <option key={group.id} value={group.id}>{group.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={questForm.description}
+                  onChange={(e) => setQuestForm(prev => ({ ...prev, description: e.target.value }))}
+                  className="cp-input h-20 resize-none"
+                  placeholder="Describe what this quest requires..."
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Target Metric
+                  </label>
+                  <select
+                    value={questForm.targetMetric}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, targetMetric: e.target.value }))}
+                    className="cp-input"
+                  >
+                    {QUEST_METRICS.map(metric => (
+                      <option key={metric.id} value={metric.id}>{metric.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Comparison
+                  </label>
+                  <select
+                    value={questForm.comparisonType}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, comparisonType: e.target.value as ComparisonType }))}
+                    className="cp-input"
+                  >
+                    {Object.entries(COMPARISON_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Target Value
+                  </label>
+                  <input
+                    type="number"
+                    value={questForm.targetValue}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, targetValue: parseInt(e.target.value) }))}
+                    className="cp-input"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Difficulty
+                  </label>
+                  <select
+                    value={questForm.difficulty}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, difficulty: e.target.value }))}
+                    className="cp-input"
+                  >
+                    {QUEST_DIFFICULTIES.map(diff => (
+                      <option key={diff.id} value={diff.id}>{diff.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={questForm.priority}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, priority: parseInt(e.target.value) }))}
+                    className="cp-input"
+                  >
+                    <option value={1}>Low</option>
+                    <option value={2}>Medium</option>
+                    <option value={3}>High</option>
+                    <option value={4}>Critical</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Estimated Time
+                  </label>
+                  <input
+                    type="text"
+                    value={questForm.estimatedTime}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, estimatedTime: e.target.value }))}
+                    className="cp-input"
+                    placeholder="e.g., 1 day, 2 weeks"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Reward Type
+                  </label>
+                  <select
+                    value={questForm.rewardType}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, rewardType: e.target.value }))}
+                    className="cp-input"
+                  >
+                    <option value="">No reward</option>
+                    {QUEST_REWARD_TYPES.map(reward => (
+                      <option key={reward.id} value={reward.id}>{reward.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                    Reward Value
+                  </label>
+                  <input
+                    type="number"
+                    value={questForm.rewardValue || ''}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, rewardValue: e.target.value ? parseInt(e.target.value) : null }))}
+                    className="cp-input"
+                    placeholder="Amount or value"
+                    disabled={!questForm.rewardType}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={questForm.isRepeatable}
+                    onChange={(e) => setQuestForm(prev => ({ ...prev, isRepeatable: e.target.checked }))}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-cp-text-secondary">Repeatable Quest</span>
+                </label>
+
+                {questForm.isRepeatable && (
+                  <div>
+                    <input
+                      type="number"
+                      value={questForm.maxCompletions || ''}
+                      onChange={(e) => setQuestForm(prev => ({ ...prev, maxCompletions: e.target.value ? parseInt(e.target.value) : null }))}
+                      className="cp-input w-24"
+                      placeholder="Max"
+                      min="1"
+                    />
+                    <span className="text-xs text-cp-text-muted ml-2">max completions</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateQuest(false)}
+                className="cp-button-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateQuest}
+                disabled={!questForm.name || !questForm.targetMetric}
+                className="cp-button-primary disabled:opacity-50"
+              >
+                Create Quest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Quest Modal */}
+      {showAssignQuest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="cp-card p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-cp-text-primary mb-4">Assign Quests</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-cp-text-secondary mb-2">
+                  Select Quest Group to Assign
+                </label>
+                <select className="cp-input">
+                  <option value="">Select a quest group...</option>
+                  {questGroups.map(group => (
+                    <option key={group.id} value={group.id}>{group.name} ({group.questCount} quests)</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                  Assign to Members
+                </label>
+                <select className="cp-input">
+                  <option value="all">All Members</option>
+                  <option value="new">New Members Only</option>
+                  <option value="specific">Specific Members</option>
+                  <option value="role">By Role</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-cp-text-secondary mb-1">
+                  Due Date (Optional)
+                </label>
+                <input
+                  type="date"
+                  className="cp-input"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAssignQuest(false)}
+                className="cp-button-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                className="cp-button-primary"
+              >
+                Assign Quests
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* This component is getting quite large - in the real implementation, 
           we would split this into multiple components for better maintainability */}
     </div>
