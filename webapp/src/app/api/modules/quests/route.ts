@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { QUEST_METRICS, COMPARISON_LABELS } from '@/types/quests'
+import { checkAllianceAdminPermission } from '@/lib/alliance-admin'
 
 // Quest creation schema
 const createQuestSchema = z.object({
@@ -173,18 +174,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createQuestSchema.parse(body)
 
-    // Check admin permissions
-    const isAdmin = await prisma.allianceAdmin.findFirst({
-      where: {
-        allianceId: validatedData.allianceId,
-        userId: session.user.id,
-        isActive: true
-      }
-    })
-
-    if (!isAdmin) {
+    // Check admin permissions using enhanced system
+    const adminCheck = await checkAllianceAdminPermission(validatedData.allianceId, session)
+    
+    if (!adminCheck.hasPermission || adminCheck.adminLevel === 'none') {
       return NextResponse.json({ 
-        error: 'Admin permissions required' 
+        error: 'Admin permissions required',
+        details: adminCheck.reason
       }, { status: 403 })
     }
 
