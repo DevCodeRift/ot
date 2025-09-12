@@ -145,8 +145,15 @@ export default function LocutusRaidFinder() {
               <input
                 id="numResults"
                 type="number"
-                value={numResults}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNumResults(parseInt(e.target.value) || 5)}
+                value={numResults || 5}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setNumResults(5);
+                  } else {
+                    setNumResults(parseInt(value) || 5);
+                  }
+                }}
                 className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
                 min={1}
                 max={25}
@@ -158,8 +165,15 @@ export default function LocutusRaidFinder() {
               <input
                 id="activeTimeCutoff"
                 type="number"
-                value={activeTimeCutoff}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setActiveTimeCutoff(parseInt(e.target.value) || 10000)}
+                value={activeTimeCutoff || 10000}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setActiveTimeCutoff(10000);
+                  } else {
+                    setActiveTimeCutoff(parseInt(value) || 10000);
+                  }
+                }}
                 className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
               />
             </div>
@@ -169,8 +183,15 @@ export default function LocutusRaidFinder() {
               <input
                 id="minLoot"
                 type="number"
-                value={minLoot}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMinLoot(parseFloat(e.target.value) || 0)}
+                value={minLoot || 0}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setMinLoot(0);
+                  } else {
+                    setMinLoot(parseFloat(value) || 0);
+                  }
+                }}
                 className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
               />
             </div>
@@ -180,8 +201,15 @@ export default function LocutusRaidFinder() {
               <input
                 id="defensiveSlots"
                 type="number"
-                value={defensiveSlots}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDefensiveSlots(parseInt(e.target.value) || -1)}
+                value={defensiveSlots || -1}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setDefensiveSlots(-1);
+                  } else {
+                    setDefensiveSlots(parseInt(value) || -1);
+                  }
+                }}
                 className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
               />
             </div>
