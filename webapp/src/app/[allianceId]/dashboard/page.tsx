@@ -30,7 +30,11 @@ export default async function AllianceDashboardPage({ params }: DashboardPagePro
   }
 
   // Get available modules for this alliance
-  const { modules, user, error } = await getUserAvailableModules()
+  const { modules: allModules, user, error } = await getUserAvailableModules()
+  
+  // Filter out modules we don't want to display
+  const excludedModuleNames = ['Banking & Economics', 'quests'] // Exclude by name
+  const modules = allModules.filter(module => !excludedModuleNames.includes(module.name))
 
   const moduleColors = {
     'membership': 'cyan',
