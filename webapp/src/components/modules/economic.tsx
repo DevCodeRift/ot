@@ -178,7 +178,7 @@ export function EconomicToolsModule({ allianceId }: EconomicToolsModuleProps) {
       }
 
       const endpoint = type === 'deposit' 
-        ? `/api/modules/economic/holdings`
+        ? `/api/modules/economic/holdings/deposit`
         : `/api/modules/economic/holdings/withdraw`
 
       const response = await fetch(endpoint, {
@@ -525,10 +525,16 @@ export function EconomicToolsModule({ allianceId }: EconomicToolsModuleProps) {
               </h3>
               <p className="text-sm text-cp-text-secondary mt-1">
                 {showDepositForm 
-                  ? 'Add resources to your virtual holdings account'
-                  : 'Withdraw resources from your virtual holdings account'
+                  ? 'Deposit resources from your nation to the alliance bank via P&W API'
+                  : 'Withdraw resources from alliance bank to your nation via P&W API'
                 }
               </p>
+              <div className="bg-cp-bg-tertiary border border-cp-yellow rounded p-3 mt-2">
+                <p className="text-xs text-cp-yellow">
+                  <strong>Note:</strong> This will make actual transfers using the Politics & War API. 
+                  Ensure your P&W API key is configured in your profile settings.
+                </p>
+              </div>
             </div>
             <div className="p-6 space-y-4">
               {/* Money Input */}

@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { PoliticsWarAPI } from '@/lib/politics-war-api'
 
-// POST /api/modules/economic/holdings/withdraw - Withdraw from holdings
+// POST /api/modules/economic/holdings/deposit - Deposit to holdings
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -22,17 +22,17 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate that at least one resource is being withdrawn
+    // Validate that at least one resource is being deposited
     const resourceKeys = ['money', 'coal', 'oil', 'uranium', 'iron', 'bauxite', 'lead', 'gasoline', 'munitions', 'steel', 'aluminum', 'food']
     const hasResources = resourceKeys.some(key => resources[key] && resources[key] > 0)
     
     if (!hasResources) {
       return NextResponse.json({ 
-        error: 'At least one resource must be withdrawn' 
+        error: 'At least one resource must be deposited' 
       }, { status: 400 })
     }
 
-    console.log('Processing withdrawal for user', session.user.id, 'in alliance', allianceId)
+    console.log('Processing deposit for user', session.user.id, 'in alliance', allianceId)
 
     // Check module access
     const moduleAccess = await prisma.allianceModule.findFirst({
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Get user's P&W API key and nation info
+    // Get user's P&W API key
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { pwApiKey: true, pwNationId: true }
@@ -67,56 +67,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Get user's holdings
-    const holdings = await prisma.memberHolding.findUnique({
-      where: {
-        userId_allianceId: {
-          userId: session.user.id,
-          allianceId: parseInt(allianceId)
-        }
-      }
-    })
-
-    if (!holdings) {
-      return NextResponse.json({ 
-        error: 'No holdings found for this alliance' 
-      }, { status: 404 })
-    }
-
-    // Validate sufficient balance for each resource
-    const insufficientResources = []
-    for (const [resource, amount] of Object.entries(resources)) {
-      const numAmount = Number(amount)
-      if (numAmount && numAmount > 0) {
-        const currentBalance = holdings[resource as keyof typeof holdings] as number
-        if (currentBalance < numAmount) {
-          insufficientResources.push({
-            resource,
-            requested: numAmount,
-            available: currentBalance
-          })
-        }
-      }
-    }
-
-    if (insufficientResources.length > 0) {
-      return NextResponse.json({
-        error: 'Insufficient balance',
-        details: insufficientResources
-      }, { status: 400 })
-    }
-
-    // Calculate money value of withdrawal for tracking
-    const moneyValue = resources.money || 0
-
     // Initialize P&W API client
     const pwApi = new PoliticsWarAPI(user.pwApiKey)
 
     try {
-      // Make the actual withdrawal from P&W alliance bank
-      const withdrawResult = await pwApi.bankWithdraw({
-        receiver: user.pwNationId.toString(),
-        receiver_type: 1, // 1 for nation, 2 for alliance
+      // Make the actual deposit to P&W alliance bank
+      const depositResult = await pwApi.bankDeposit({
         money: resources.money || 0,
         coal: resources.coal || 0,
         oil: resources.oil || 0,
@@ -129,28 +85,50 @@ export async function POST(request: NextRequest) {
         steel: resources.steel || 0,
         aluminum: resources.aluminum || 0,
         food: resources.food || 0,
-        note: note || `Withdrawal by ${session.user.name || 'member'} via alliance platform`
+        note: note || `Deposit from ${session.user.name || 'member'} via alliance platform`
       })
 
-      console.log('P&W Bank withdrawal successful:', withdrawResult)
+      console.log('P&W Bank deposit successful:', depositResult)
 
-      // Update holdings balances (subtract amounts)
+      // Get or create user's holdings record for tracking
+      let holdings = await prisma.memberHolding.findUnique({
+        where: {
+          userId_allianceId: {
+            userId: session.user.id,
+            allianceId: parseInt(allianceId)
+          }
+        }
+      })
+
+      if (!holdings) {
+        holdings = await prisma.memberHolding.create({
+          data: {
+            userId: session.user.id,
+            allianceId: parseInt(allianceId)
+          }
+        })
+      }
+
+      // Calculate money value of deposit for tracking
+      const moneyValue = resources.money || 0
+
+      // Update holdings balances (add amounts for tracking)
       const updatedHoldings = await prisma.memberHolding.update({
         where: { id: holdings.id },
         data: {
-          money: { decrement: resources.money || 0 },
-          coal: { decrement: resources.coal || 0 },
-          oil: { decrement: resources.oil || 0 },
-          uranium: { decrement: resources.uranium || 0 },
-          iron: { decrement: resources.iron || 0 },
-          bauxite: { decrement: resources.bauxite || 0 },
-          lead: { decrement: resources.lead || 0 },
-          gasoline: { decrement: resources.gasoline || 0 },
-          munitions: { decrement: resources.munitions || 0 },
-          steel: { decrement: resources.steel || 0 },
-          aluminum: { decrement: resources.aluminum || 0 },
-          food: { decrement: resources.food || 0 },
-          totalWithdrawn: { increment: moneyValue }
+          money: { increment: resources.money || 0 },
+          coal: { increment: resources.coal || 0 },
+          oil: { increment: resources.oil || 0 },
+          uranium: { increment: resources.uranium || 0 },
+          iron: { increment: resources.iron || 0 },
+          bauxite: { increment: resources.bauxite || 0 },
+          lead: { increment: resources.lead || 0 },
+          gasoline: { increment: resources.gasoline || 0 },
+          munitions: { increment: resources.munitions || 0 },
+          steel: { increment: resources.steel || 0 },
+          aluminum: { increment: resources.aluminum || 0 },
+          food: { increment: resources.food || 0 },
+          totalDeposited: { increment: moneyValue }
         }
       })
 
@@ -159,7 +137,7 @@ export async function POST(request: NextRequest) {
         data: {
           holdingId: holdings.id,
           userId: session.user.id,
-          type: 'withdraw',
+          type: 'deposit',
           money: resources.money || null,
           coal: resources.coal || null,
           oil: resources.oil || null,
@@ -173,7 +151,7 @@ export async function POST(request: NextRequest) {
           aluminum: resources.aluminum || null,
           food: resources.food || null,
           note: note || null,
-          pwBankRecordId: withdrawResult.bankWithdraw?.id || null
+          pwBankRecordId: depositResult.bankDeposit?.id || null
         }
       })
 
@@ -181,29 +159,29 @@ export async function POST(request: NextRequest) {
       await prisma.auditLog.create({
         data: {
           userId: session.user.id,
-          action: 'HOLDINGS_WITHDRAW',
+          action: 'HOLDINGS_DEPOSIT',
           resource: 'holdings',
           resourceId: holdings.id,
           details: {
             allianceId: parseInt(allianceId),
             resources,
             note,
-            pwBankRecordId: withdrawResult.bankWithdraw?.id
+            pwBankRecordId: depositResult.bankDeposit?.id
           }
         }
       })
 
-      console.log('Withdrawal completed successfully')
+      console.log('Deposit completed successfully')
 
       return NextResponse.json({
         success: true,
-        message: 'Resources withdrawn from alliance bank successfully',
+        message: 'Resources deposited to alliance bank successfully',
         transaction: {
-          type: 'withdraw',
+          type: 'deposit',
           resources,
           note,
           timestamp: new Date().toISOString(),
-          pwBankRecordId: withdrawResult.bankWithdraw?.id
+          pwBankRecordId: depositResult.bankDeposit?.id
         },
         newBalances: {
           money: updatedHoldings.money,
@@ -222,7 +200,7 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (pwError: any) {
-      console.error('P&W API Error during withdrawal:', pwError)
+      console.error('P&W API Error during deposit:', pwError)
       
       // Check if it's a rate limit error
       if (pwError.message?.includes('rate limit')) {
@@ -235,28 +213,20 @@ export async function POST(request: NextRequest) {
       // Check if it's an insufficient funds error
       if (pwError.message?.includes('insufficient') || pwError.message?.includes('balance')) {
         return NextResponse.json({
-          error: 'Insufficient resources in alliance bank. Please check alliance bank balances.',
+          error: 'Insufficient resources in your nation. Please check your resource balances.',
           details: pwError.message
         }, { status: 400 })
       }
 
-      // Check for permission errors
-      if (pwError.message?.includes('permission') || pwError.message?.includes('authorize')) {
-        return NextResponse.json({
-          error: 'You do not have permission to withdraw from the alliance bank.',
-          details: pwError.message
-        }, { status: 403 })
-      }
-
       // Generic P&W API error
       return NextResponse.json({
-        error: 'Failed to withdraw from Politics & War alliance bank',
+        error: 'Failed to deposit to Politics & War alliance bank',
         details: pwError.message || 'Unknown P&W API error'
       }, { status: 400 })
     }
 
   } catch (error) {
-    console.error('Holdings withdrawal error:', error)
+    console.error('Holdings deposit error:', error)
     return NextResponse.json({ 
       error: 'Internal server error' 
     }, { status: 500 })

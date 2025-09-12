@@ -220,4 +220,159 @@ export class PoliticsWarAPI {
     
     return this.request(query, { allianceId: [allianceId.toString()] })
   }
+
+  // Bank Operations
+  async bankDeposit(params: {
+    money?: number
+    coal?: number
+    oil?: number
+    uranium?: number
+    iron?: number
+    bauxite?: number
+    lead?: number
+    gasoline?: number
+    munitions?: number
+    steel?: number
+    aluminum?: number
+    food?: number
+    note?: string
+  }): Promise<any> {
+    const mutation = `
+      mutation bankDeposit(
+        $money: Float
+        $coal: Float
+        $oil: Float
+        $uranium: Float
+        $iron: Float
+        $bauxite: Float
+        $lead: Float
+        $gasoline: Float
+        $munitions: Float
+        $steel: Float
+        $aluminum: Float
+        $food: Float
+        $note: String
+      ) {
+        bankDeposit(
+          money: $money
+          coal: $coal
+          oil: $oil
+          uranium: $uranium
+          iron: $iron
+          bauxite: $bauxite
+          lead: $lead
+          gasoline: $gasoline
+          munitions: $munitions
+          steel: $steel
+          aluminum: $aluminum
+          food: $food
+          note: $note
+        ) {
+          id
+          date
+          sender_id
+          sender_type
+          receiver_id
+          receiver_type
+          banker_id
+          note
+          money
+          coal
+          oil
+          uranium
+          iron
+          bauxite
+          lead
+          gasoline
+          munitions
+          steel
+          aluminum
+          food
+          tax_id
+        }
+      }
+    `
+    
+    return this.request(mutation, params)
+  }
+
+  async bankWithdraw(params: {
+    receiver: string
+    receiver_type: number
+    money?: number
+    coal?: number
+    oil?: number
+    uranium?: number
+    iron?: number
+    bauxite?: number
+    lead?: number
+    gasoline?: number
+    munitions?: number
+    steel?: number
+    aluminum?: number
+    food?: number
+    note?: string
+  }): Promise<any> {
+    const mutation = `
+      mutation bankWithdraw(
+        $receiver: ID!
+        $receiver_type: Int!
+        $money: Float
+        $coal: Float
+        $oil: Float
+        $uranium: Float
+        $iron: Float
+        $bauxite: Float
+        $lead: Float
+        $gasoline: Float
+        $munitions: Float
+        $steel: Float
+        $aluminum: Float
+        $food: Float
+        $note: String
+      ) {
+        bankWithdraw(
+          receiver: $receiver
+          receiver_type: $receiver_type
+          money: $money
+          coal: $coal
+          oil: $oil
+          uranium: $uranium
+          iron: $iron
+          bauxite: $bauxite
+          lead: $lead
+          gasoline: $gasoline
+          munitions: $munitions
+          steel: $steel
+          aluminum: $aluminum
+          food: $food
+          note: $note
+        ) {
+          id
+          date
+          sender_id
+          sender_type
+          receiver_id
+          receiver_type
+          banker_id
+          note
+          money
+          coal
+          oil
+          uranium
+          iron
+          bauxite
+          lead
+          gasoline
+          munitions
+          steel
+          aluminum
+          food
+          tax_id
+        }
+      }
+    `
+    
+    return this.request(mutation, params)
+  }
 }
