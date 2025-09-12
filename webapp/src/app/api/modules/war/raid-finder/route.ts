@@ -595,8 +595,10 @@ async function calculateNationValue(
     }
 
     // Blockade penalty if defender has naval superiority
-    if (militaryStrength.navalStrength > attackerStrength.navalStrength * 1.5) {
+    if (attackerStrength.navalStrength > 0 && militaryStrength.navalStrength > attackerStrength.navalStrength * 1.5) {
       lootAccessibility *= 0.8; // Reduce accessibility due to potential blockade
+    } else if (attackerStrength.navalStrength === 0 && militaryStrength.navalStrength > 0) {
+      lootAccessibility *= 0.9; // Minor penalty if attacker has no navy but defender does
     }
   }
 
@@ -909,28 +911,40 @@ export async function GET(request: NextRequest) {
       // Ground strength ratio check
       const groundRatio = userMilitaryStrength.groundStrength / Math.max(militaryStrength.groundStrength, 1);
       if (groundRatio < minGroundRatio) {
-        console.log(`[Raid Finder] Skipping ${nation.nation_name}: insufficient ground ratio (${groundRatio.toFixed(2)})`);
         return null;
       }
 
       // Weak ground only filter
       if (weakGroundOnly && militaryStrength.groundStrength >= userMilitaryStrength.groundStrength) {
-        console.log(`[Raid Finder] Skipping ${nation.nation_name}: not weak ground target`);
         return null;
       }
 
-      // Air superiority filter
-      const airRatio = militaryStrength.airStrength / Math.max(userMilitaryStrength.airStrength, 1);
-      if (airRatio > maxAirRatio) {
-        console.log(`[Raid Finder] Skipping ${nation.nation_name}: too strong air force (${airRatio.toFixed(2)})`);
-        return null;
+      // Air superiority filter - adapt based on user's air capabilities
+      if (userMilitaryStrength.airStrength > 0) {
+        const airRatio = militaryStrength.airStrength / userMilitaryStrength.airStrength;
+        if (airRatio > maxAirRatio) {
+          return null;
+        }
+      } else {
+        // If user has no air force, allow targets with limited air power relative to ground strength
+        const maxAllowedAir = userMilitaryStrength.groundStrength * 0.2; // 20% of ground strength
+        if (militaryStrength.airStrength > maxAllowedAir) {
+          return null;
+        }
       }
 
-      // Naval superiority filter
-      const navalRatio = militaryStrength.navalStrength / Math.max(userMilitaryStrength.navalStrength, 1);
-      if (navalRatio > maxNavalRatio) {
-        console.log(`[Raid Finder] Skipping ${nation.nation_name}: too strong navy (${navalRatio.toFixed(2)})`);
-        return null;
+      // Naval superiority filter - adapt based on user's naval capabilities  
+      if (userMilitaryStrength.navalStrength > 0) {
+        const navalRatio = militaryStrength.navalStrength / userMilitaryStrength.navalStrength;
+        if (navalRatio > maxNavalRatio) {
+          return null;
+        }
+      } else {
+        // If user has no navy, allow targets with limited naval power relative to ground strength
+        const maxAllowedNaval = userMilitaryStrength.groundStrength * 0.1; // 10% of ground strength
+        if (militaryStrength.navalStrength > maxAllowedNaval) {
+          return null;
+        }
       }
 
       // Raid viability analysis
@@ -953,13 +967,11 @@ export async function GET(request: NextRequest) {
 
       // Success chance filter
       if (raidAnalysis.overallSuccessChance < minSuccessChance) {
-        console.log(`[Raid Finder] Skipping ${nation.nation_name}: low success chance (${raidAnalysis.overallSuccessChance})`);
         return null;
       }
 
       // Strong targets filter (unless explicitly included)
       if (!includeStrongTargets && militaryStrength.totalStrength > userMilitaryStrength.totalStrength * 1.2) {
-        console.log(`[Raid Finder] Skipping ${nation.nation_name}: too strong militarily`);
         return null;
       }
 
