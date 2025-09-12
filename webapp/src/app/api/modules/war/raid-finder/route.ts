@@ -284,7 +284,7 @@ export async function GET(request: NextRequest) {
               name
             }
             score
-            cities: num_cities
+            num_cities
             soldiers
             tanks
             aircraft
@@ -361,7 +361,7 @@ export async function GET(request: NextRequest) {
         score: nation.score,
         alliance_id: nation.alliance_id,
         alliance_name: nation.alliance?.name,
-        cities: nation.cities,
+        cities: nation.num_cities,
         soldiers: nation.soldiers,
         tanks: nation.tanks,
         aircraft: nation.aircraft,
