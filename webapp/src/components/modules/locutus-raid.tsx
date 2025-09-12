@@ -27,6 +27,22 @@ interface LocutusRaidTarget {
   defWars: number;
   targetScore: number;
   raidAdvice: string[];
+  
+  // Debug breakdown
+  debugBreakdown?: {
+    baseIncomePerCity: number;
+    totalGrossIncome: number;
+    netIncomePerDay: number;
+    daysOfSavings: number;
+    estimatedCash: number;
+    lootableCash: number;
+    resourceValue: number;
+    infraLootValue: number;
+    militaryValue: number;
+    wealthMultiplier: number;
+    inactivityBonus: number;
+    finalLoot: number;
+  };
 }
 
 interface LocutusRaidResponse {
@@ -353,6 +369,35 @@ export default function LocutusRaidFinder() {
                               </span>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {/* Debug Breakdown */}
+                      {target.debugBreakdown && (
+                        <div className="mb-3">
+                          <details className="group">
+                            <summary className="text-gray-400 text-sm cursor-pointer hover:text-cyan-400">
+                              📊 Loot Breakdown (click to expand)
+                            </summary>
+                            <div className="mt-2 bg-gray-900/50 rounded p-3 text-xs space-y-1">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>Base Income/City: <span className="text-green-400">${formatNumber(target.debugBreakdown.baseIncomePerCity)}</span></div>
+                                <div>Daily Gross Income: <span className="text-green-400">${formatNumber(target.debugBreakdown.totalGrossIncome)}</span></div>
+                                <div>Net Income/Day: <span className="text-blue-400">${formatNumber(target.debugBreakdown.netIncomePerDay)}</span></div>
+                                <div>Days of Savings: <span className="text-yellow-400">{target.debugBreakdown.daysOfSavings}</span></div>
+                                <div>Estimated Cash: <span className="text-green-400">${formatNumber(target.debugBreakdown.estimatedCash)}</span></div>
+                                <div>Lootable Cash (14%): <span className="text-cyan-400">${formatNumber(target.debugBreakdown.lootableCash)}</span></div>
+                                <div>Resource Stockpile: <span className="text-purple-400">${formatNumber(target.debugBreakdown.resourceValue)}</span></div>
+                                <div>Infrastructure Loot: <span className="text-orange-400">${formatNumber(target.debugBreakdown.infraLootValue)}</span></div>
+                                <div>Military Equipment: <span className="text-red-400">${formatNumber(target.debugBreakdown.militaryValue)}</span></div>
+                                <div>Wealth Multiplier: <span className="text-yellow-400">{target.debugBreakdown.wealthMultiplier}x</span></div>
+                                <div>Inactivity Bonus: <span className="text-pink-400">{target.debugBreakdown.inactivityBonus}x</span></div>
+                                <div className="col-span-2 border-t border-gray-600 pt-1 mt-1">
+                                  <strong>Final Loot Total: <span className="text-cyan-300">${formatNumber(target.debugBreakdown.finalLoot)}</span></strong>
+                                </div>
+                              </div>
+                            </div>
+                          </details>
                         </div>
                       )}
 

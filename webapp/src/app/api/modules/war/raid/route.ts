@@ -37,6 +37,22 @@ interface RaidTarget {
   // Target selection scoring
   targetScore: number;
   raidAdvice: string[];
+  
+  // Debug breakdown for frontend display
+  debugBreakdown?: {
+    baseIncomePerCity: number;
+    totalGrossIncome: number;
+    netIncomePerDay: number;
+    daysOfSavings: number;
+    estimatedCash: number;
+    lootableCash: number;
+    resourceValue: number;
+    infraLootValue: number;
+    militaryValue: number;
+    wealthMultiplier: number;
+    inactivityBonus: number;
+    finalLoot: number;
+  };
 }
 
 // Locutus activity calculation - defaults to 7d inactive
@@ -88,10 +104,10 @@ function calculateMilitaryStrength(nation: any): {
 }
 
 // Realistic Locutus-style loot calculation based on estimated production
-function calculateLootTotal(nation: any): number {
+function calculateLootTotal(nation: any): { lootTotal: number; debugBreakdown: any } {
   const numCities = nation.num_cities || 0;
   
-  if (numCities === 0) return 0;
+  if (numCities === 0) return { lootTotal: 0, debugBreakdown: null };
   
   // Calculate average infrastructure from cities data
   let avgInfra = 1000; // Default fallback
@@ -223,7 +239,23 @@ function calculateLootTotal(nation: any): number {
   console.log(`  → Inactivity Bonus: ${Math.round(inactivityBonus * 100)/100}x`);
   console.log(`  → Final Loot Total: $${Math.round(finalLoot).toLocaleString()}`);
   
-  return Math.round(finalLoot);
+  return {
+    lootTotal: Math.round(finalLoot),
+    debugBreakdown: {
+      baseIncomePerCity: Math.round(baseIncomePerCity),
+      totalGrossIncome: Math.round(totalGrossIncome),
+      netIncomePerDay: Math.round(netIncomeAfterUpkeep),
+      daysOfSavings: Math.round(daysOfSavings * 10) / 10,
+      estimatedCash: Math.round(estimatedCash),
+      lootableCash: Math.round(lootableCash),
+      resourceValue: Math.round(estimatedResourceValue),
+      infraLootValue: Math.round(infraLootValue),
+      militaryValue: Math.round(lootableMilitary),
+      wealthMultiplier: Math.round(wealthMultiplier * 100) / 100,
+      inactivityBonus: Math.round(inactivityBonus * 100) / 100,
+      finalLoot: Math.round(finalLoot)
+    }
+  };
 }
 
 // Main raid command implementation - based on Locutus WarCommands.java
@@ -355,7 +387,7 @@ export async function GET(request: NextRequest) {
     let targets: RaidTarget[] = nations.map((nation: any) => {
       const activity = calculateActivity(nation, activeTimeCutoff);
       const military = calculateMilitaryStrength(nation);
-      const lootTotal = calculateLootTotal(nation);
+      const lootResult = calculateLootTotal(nation);
       const avgInfra = nation.cities?.length > 0 ? 
         nation.cities.reduce((sum: number, city: any) => sum + (city.infrastructure || 0), 0) / nation.cities.length : 
         1000;
@@ -371,7 +403,7 @@ export async function GET(request: NextRequest) {
           tanks: nation.tanks,
           aircraft: nation.aircraft,
           ships: nation.ships,
-          calculatedLoot: lootTotal
+          calculatedLoot: lootResult.lootTotal
         });
         debugCounter++;
       }
@@ -398,7 +430,7 @@ export async function GET(request: NextRequest) {
         wars: nation.wars || [],
         
         // Calculated values
-        lootTotal,
+        lootTotal: lootResult.lootTotal,
         avgInfra,
         militaryStrength: military.militaryStrength,
         groundStrength: military.groundStrength,
@@ -407,7 +439,10 @@ export async function GET(request: NextRequest) {
         defWars,
         
         targetScore: 0, // Will be calculated
-        raidAdvice: []
+        raidAdvice: [],
+        
+        // Debug breakdown for frontend
+        debugBreakdown: lootResult.debugBreakdown
       };
     });
 
