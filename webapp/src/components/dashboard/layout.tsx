@@ -62,8 +62,12 @@ export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) 
     { name: 'Module Administration', href: '/admin/modules', icon: Settings, current: false },
   ]
 
+  // Check if user is admin based on Discord ID
+  const adminIds = process.env.ADMIN_DISCORD_IDS?.split(',') || []
+  const isAdmin = session?.user?.discordId ? adminIds.includes(session.user.discordId) : false
+
   // Add global admin navigation if user is admin
-  if (session?.user?.isAdmin) {
+  if (isAdmin) {
     navigation.push(
       { name: 'Alliance Management', href: '/admin/alliances', icon: Shield, current: false }
     )

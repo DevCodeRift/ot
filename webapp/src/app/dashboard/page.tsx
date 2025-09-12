@@ -49,7 +49,7 @@ export default async function DashboardPage() {
 
   // If user has no alliance, show error
   return (
-    <DashboardLayout>
+    <DashboardLayout allianceId={0}>
       <div className="space-y-6">
         <div className="cp-card p-8 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-cp-red/20 flex items-center justify-center">

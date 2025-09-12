@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         where: { id: session.user.id },
         select: { currentAllianceId: true }
       })
-      allianceId = user?.currentAllianceId
+      allianceId = user?.currentAllianceId || null
     }
 
     if (!allianceId) {

@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Alliance ID is required' }, { status: 400 })
     }
 
-    // Check if user has access to the economic module for this alliance
-    const hasAccess = await checkModuleAccess(session.user.id, parseInt(allianceId), 'economic')
+    // Check if user has access to the economic module
+    const access = await checkModuleAccess('economic')
     
-    if (!hasAccess) {
+    if (!access.hasAccess) {
       return NextResponse.json({ 
-        error: 'Economic Tools module not enabled for this alliance' 
+        error: access.error || 'Economic Tools module not enabled for this alliance' 
       }, { status: 403 })
     }
 

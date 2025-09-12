@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { DashboardLayout } from '@/components/dashboard/layout'
 import { checkModuleAccess } from '@/lib/module-access'
 import { MembershipModule } from '@/components/modules/membership'
-import EconomicToolsModule from '@/app/modules/economic/page'
+import { EconomicToolsModule } from '@/components/modules/economic'
 
 interface ModulePageProps {
   params: Promise<{
@@ -66,7 +66,7 @@ export default async function ModulePage({ params }: ModulePageProps) {
         return <MembershipModule allianceId={allianceId} />
       
       case 'economic':
-        return <EconomicToolsModule allianceId={allianceId.toString()} />
+        return <EconomicToolsModule allianceId={allianceId} />
       
       case 'war':
       case 'banking':

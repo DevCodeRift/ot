@@ -39,18 +39,18 @@ export async function GET(
             module: true
           }
         },
-        users: {
+        nations: {
           select: {
             id: true,
-            name: true,
-            discordId: true,
-            pwNationName: true,
+            nationName: true,
+            leaderName: true,
             createdAt: true
           }
         },
+        apiKey: true,
         _count: {
           select: {
-            users: true,
+            nations: true,
             allianceModules: true
           }
         }
@@ -67,7 +67,7 @@ export async function GET(
         name: alliance.name,
         acronym: alliance.acronym,
         hasApiKey: !!alliance.apiKey,
-        userCount: alliance._count.users,
+        nationCount: alliance._count.nations,
         moduleCount: alliance._count.allianceModules,
         enabledModules: alliance.allianceModules
           .filter((am: any) => am.enabled)
@@ -78,7 +78,7 @@ export async function GET(
             enabledAt: am.enabledAt,
             enabledBy: am.enabledBy
           })),
-        users: alliance.users,
+        nations: alliance.nations,
         createdAt: alliance.createdAt,
         updatedAt: alliance.updatedAt
       }

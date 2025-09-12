@@ -29,18 +29,16 @@ export const authOptions: NextAuthOptions = {
             pwNationId: true,
             pwNationName: true,
             currentAllianceId: true,
-            isAdmin: true,
           }
         })
 
         if (dbUser) {
-          token.discordId = dbUser.discordId
-          token.discordUsername = dbUser.discordUsername
-          token.pwApiKey = dbUser.pwApiKey
-          token.pwNationId = dbUser.pwNationId
-          token.pwNationName = dbUser.pwNationName
-          token.currentAllianceId = dbUser.currentAllianceId
-          token.isAdmin = dbUser.isAdmin
+          token.discordId = dbUser.discordId || undefined
+          token.discordUsername = dbUser.discordUsername || undefined
+          token.pwApiKey = dbUser.pwApiKey || undefined
+          token.pwNationId = dbUser.pwNationId || undefined
+          token.pwNationName = dbUser.pwNationName || undefined
+          token.currentAllianceId = dbUser.currentAllianceId || undefined
         }
         
         return token
@@ -59,18 +57,16 @@ export const authOptions: NextAuthOptions = {
             pwNationId: true,
             pwNationName: true,
             currentAllianceId: true,
-            isAdmin: true,
           }
         })
 
         if (dbUser) {
-          token.discordId = dbUser.discordId
-          token.discordUsername = dbUser.discordUsername
-          token.pwApiKey = dbUser.pwApiKey
-          token.pwNationId = dbUser.pwNationId
-          token.pwNationName = dbUser.pwNationName
-          token.currentAllianceId = dbUser.currentAllianceId
-          token.isAdmin = dbUser.isAdmin
+          token.discordId = dbUser.discordId || undefined
+          token.discordUsername = dbUser.discordUsername || undefined
+          token.pwApiKey = dbUser.pwApiKey || undefined
+          token.pwNationId = dbUser.pwNationId || undefined
+          token.pwNationName = dbUser.pwNationName || undefined
+          token.currentAllianceId = dbUser.currentAllianceId || undefined
         }
 
         // Store Discord info if this is a new login
@@ -97,7 +93,6 @@ export const authOptions: NextAuthOptions = {
         session.user.pwNationId = token.pwNationId
         session.user.pwNationName = token.pwNationName
         session.user.currentAllianceId = token.currentAllianceId
-        session.user.isAdmin = token.isAdmin
       }
       return session
     },
