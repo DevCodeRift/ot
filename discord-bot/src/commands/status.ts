@@ -18,7 +18,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     try {
       const response = await fetch(`${webappUrl}/api/system/status`, {
         headers: {
-          'Authorization': `Bearer ${process.env.WEBAPP_API_SECRET}`
+          'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
         }
       })
 

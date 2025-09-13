@@ -95,7 +95,7 @@ export class AutomatedMonitoringService {
     try {
       const response = await fetch(`${webappUrl}/api/system/status?allianceId=${allianceId}`, {
         headers: {
-          'Authorization': `Bearer ${process.env.WEBAPP_API_SECRET}`
+          'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
         }
       })
 
