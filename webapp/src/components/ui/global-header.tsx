@@ -115,23 +115,8 @@ export function GlobalHeader({ currentModule, allianceId, className = '' }: Glob
         sticky top-0 z-40 backdrop-blur-sm bg-cp-bg-secondary/95
         ${className}
       `}>
-        {/* Left section - Breadcrumb & Search */}
+        {/* Left section - Search only (no module breadcrumb since modules have their own headers) */}
         <div className="flex items-center space-x-4 flex-1">
-          {/* Current Module Indicator */}
-          {currentModule && (
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1 px-3 py-1 bg-cp-bg-tertiary rounded-lg border border-cp-border">
-                {currentModule === 'War Management' && <Target className="w-4 h-4 text-cp-red" />}
-                {currentModule === 'Membership' && <Users className="w-4 h-4 text-cp-cyan" />}
-                {currentModule === 'Economic' && <DollarSign className="w-4 h-4 text-cp-green" />}
-                {currentModule === 'Quests' && <Trophy className="w-4 h-4 text-cp-yellow" />}
-                {currentModule === 'Bot Management' && <Bot className="w-4 h-4 text-cp-purple" />}
-                <span className="text-sm font-medium text-cp-text-primary">{currentModule}</span>
-              </div>
-              <ChevronDown className="w-4 h-4 text-cp-text-muted" />
-            </div>
-          )}
-
           {/* Global Search */}
           <div className="relative flex-1 max-w-md">
             {searchOpen ? (

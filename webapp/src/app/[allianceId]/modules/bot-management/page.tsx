@@ -189,8 +189,8 @@ export default function BotManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-cp-bg-primary p-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="space-y-6">
+        <div className="cp-card p-6">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cp-cyan"></div>
             <span className="ml-4 text-cp-text-secondary">Loading Discord servers...</span>
@@ -201,18 +201,21 @@ export default function BotManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cp-bg-primary p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <Bot className="w-8 h-8 text-cp-cyan mr-3" />
-            <h1 className="text-3xl font-bold font-cyberpunk text-cp-text-primary">Bot Management</h1>
+    <div className="space-y-6">
+      {/* Module Header */}
+      <div className="cp-card p-6">
+        <div className="flex items-center mb-4">
+          <div className="w-12 h-12 bg-cp-cyan/20 rounded border border-cp-cyan flex items-center justify-center mr-4">
+            <Bot className="w-6 h-6 text-cp-cyan" />
           </div>
-          <p className="text-cp-text-secondary">
-            Manage Discord bot integrations for your alliance servers. Invite the bot to Discord servers where you have admin permissions.
-          </p>
+          <div>
+            <h1 className="text-2xl font-bold font-cyberpunk text-cp-text-primary">Bot Management</h1>
+            <p className="text-cp-text-secondary">
+              Manage Discord bot integrations for your alliance servers
+            </p>
+          </div>
         </div>
+      </div>
 
         {/* Active Bot Connections */}
         <div className="mb-8">
@@ -355,7 +358,7 @@ export default function BotManagementPage() {
         </div>
 
         {/* Bot Information */}
-        <div className="mt-8 bg-cp-bg-secondary border border-cp-border rounded-lg p-6">
+        <div className="bg-cp-bg-secondary border border-cp-border rounded-lg p-6">
           <h3 className="text-lg font-semibold font-cyberpunk text-cp-text-primary mb-4">
             Bot Information
           </h3>
@@ -384,6 +387,5 @@ export default function BotManagementPage() {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
