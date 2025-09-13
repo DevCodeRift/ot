@@ -251,6 +251,11 @@ async function publishStatusToChannel(channel: any, systemStatus: any, server: a
       }
     }
 
+    // Type guard to ensure channel can send messages
+    if (!channel.isTextBased() || !('send' in channel)) {
+      throw new Error('Channel does not support sending messages')
+    }
+
     await channel.send({ embeds: [embed] })
     return { success: true, message: 'Status published successfully' }
   } catch (error) {
