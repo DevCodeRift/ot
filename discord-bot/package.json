@@ -4,12 +4,13 @@
   "description": "Multi-tenant Discord bot for Politics & War Alliance Management Platform",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "prisma generate && tsc && tsc-alias",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "watch": "tsx watch src/index.ts",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "postinstall": "prisma generate"
   },
   "keywords": [
     "discord",
@@ -35,6 +36,7 @@
     "@typescript-eslint/eslint-plugin": "^6.16.0",
     "@typescript-eslint/parser": "^6.16.0",
     "eslint": "^8.56.0",
+    "prisma": "^6.16.0",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.6.2",
     "typescript": "^5.3.3"
