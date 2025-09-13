@@ -120,9 +120,8 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             action: 'assign',
-            userId: targetUser.discordId,
-            roleId: roleAny.discordRoleId,
-            roleName: role.name,
+            discordUserId: targetUser.discordId,
+            discordRoleId: roleAny.discordRoleId,
             allianceId: allianceId
           })
         })
@@ -275,9 +274,8 @@ export async function DELETE(request: NextRequest) {
           },
           body: JSON.stringify({
             action: 'remove',
-            userId: targetUser.discordId,
-            roleId: roleAny.discordRoleId,
-            roleName: role.name,
+            discordUserId: targetUser.discordId,
+            discordRoleId: roleAny.discordRoleId,
             allianceId: allianceId
           })
         })
