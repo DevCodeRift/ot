@@ -13,7 +13,9 @@ export async function loadEvents(client: Client, logger: Logger): Promise<void> 
     return;
   }
 
-  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
+  const eventFiles = fs.readdirSync(eventsPath).filter(file => 
+    (file.endsWith('.ts') || file.endsWith('.js')) && !file.endsWith('.d.ts')
+  );
 
   if (eventFiles.length === 0) {
     logger.info('No event files found');

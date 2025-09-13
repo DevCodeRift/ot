@@ -14,7 +14,9 @@ export async function loadCommands(client: Client, logger: Logger): Promise<void
     return;
   }
 
-  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => 
+    (file.endsWith('.ts') || file.endsWith('.js')) && !file.endsWith('.d.ts')
+  );
 
   if (commandFiles.length === 0) {
     logger.info('No command files found');
