@@ -68,7 +68,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (enable) {
       // Use raw query to handle the upsert operation
       await prisma.$executeRaw`
-        INSERT INTO channel_configs (id, server_id, module, event_type, channel_id, is_active, settings, created_at, updated_at)
+        INSERT INTO channel_configs (id, "serverId", module, "eventType", "channelId", "isActive", settings, "createdAt", "updatedAt")
         VALUES (
           gen_random_uuid(),
           ${interaction.guildId},
@@ -84,12 +84,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           NOW(),
           NOW()
         )
-        ON CONFLICT (server_id, module, event_type)
+        ON CONFLICT ("serverId", module, "eventType")
         DO UPDATE SET
-          channel_id = EXCLUDED.channel_id,
-          is_active = EXCLUDED.is_active,
+          "channelId" = EXCLUDED."channelId",
+          "isActive" = EXCLUDED."isActive",
           settings = EXCLUDED.settings,
-          updated_at = NOW()
+          "updatedAt" = NOW()
       `
 
       return interaction.reply({
@@ -103,10 +103,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       // Disable status updates
       await prisma.$executeRaw`
         UPDATE channel_configs 
-        SET is_active = false, updated_at = NOW()
-        WHERE server_id = ${interaction.guildId}
+        SET "isActive" = false, "updatedAt" = NOW()
+        WHERE "serverId" = ${interaction.guildId}
           AND module = 'system-monitoring'
-          AND event_type = 'status-updates'
+          AND "eventType" = 'status-updates'
       `
 
       return interaction.reply({
