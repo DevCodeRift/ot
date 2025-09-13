@@ -9,6 +9,7 @@
     "dev": "tsx src/index.ts",
     "watch": "tsx watch src/index.ts",
     "register-commands": "tsx src/registerCommands.ts",
+    "register-prod-commands": "node register-production-commands.js",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix"
   },

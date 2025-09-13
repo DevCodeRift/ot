@@ -3,7 +3,6 @@ import { SlashCommand } from '../types/discord';
 import { Logger } from 'winston';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
 
 export async function loadCommands(client: Client, logger: Logger): Promise<void> {
   const commandsPath = path.join(__dirname, '..', 'commands');
@@ -16,7 +15,7 @@ export async function loadCommands(client: Client, logger: Logger): Promise<void
   }
 
   const commandFiles = fs.readdirSync(commandsPath).filter(file => 
-    (file.endsWith('.ts') || file.endsWith('.js')) && !file.endsWith('.d.ts')
+    file.endsWith('.js') // Look for .js files in compiled output
   );
 
   if (commandFiles.length === 0) {
@@ -27,9 +26,9 @@ export async function loadCommands(client: Client, logger: Logger): Promise<void
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     try {
-      // Use pathToFileURL for Windows compatibility
-      const fileUrl = pathToFileURL(filePath).href;
-      const commandModule = await import(fileUrl);
+      // Use require for CommonJS compiled output
+      delete require.cache[require.resolve(filePath)]; // Clear cache
+      const commandModule = require(filePath);
       
       // Handle both default exports and named exports (data, execute)
       let command: SlashCommand;

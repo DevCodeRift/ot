@@ -2,7 +2,6 @@ import { REST, Routes } from 'discord.js';
 import { Logger } from 'winston';
 import * as fs from 'fs';
 import * as path from 'path';
-import { pathToFileURL } from 'url';
 
 export async function registerCommands(logger: Logger): Promise<void> {
   const commands = [];
@@ -14,16 +13,16 @@ export async function registerCommands(logger: Logger): Promise<void> {
   }
 
   const commandFiles = fs.readdirSync(commandsPath).filter(file => 
-    (file.endsWith('.ts') || file.endsWith('.js')) && !file.endsWith('.d.ts')
+    file.endsWith('.js') // Look for .js files in compiled output
   );
 
   // Collect command data for registration
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     try {
-      // Use pathToFileURL for Windows compatibility
-      const fileUrl = pathToFileURL(filePath).href;
-      const commandModule = await import(fileUrl);
+      // Use require for CommonJS compiled output
+      delete require.cache[require.resolve(filePath)]; // Clear cache
+      const commandModule = require(filePath);
       
       let commandData;
       
