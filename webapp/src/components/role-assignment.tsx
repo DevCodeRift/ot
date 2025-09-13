@@ -74,10 +74,20 @@ export function RoleAssignmentComponent({ allianceId, members, onMemberUpdate }:
     try {
       // Check if user has role assignment permissions
       const response = await fetch('/api/user/permissions/role-manager')
+      
+      console.log('Permission check response status:', response.status)
+      
       if (response.ok) {
-        setHasRolePermission(true)
+        const data = await response.json()
+        console.log('Permission check data:', data)
+        setHasRolePermission(data.hasPermission || false)
+      } else {
+        const errorData = await response.json()
+        console.log('Permission check error:', errorData)
+        setHasRolePermission(false)
       }
     } catch (err) {
+      console.error('Permission check failed:', err)
       setHasRolePermission(false)
     }
   }
@@ -187,7 +197,27 @@ export function RoleAssignmentComponent({ allianceId, members, onMemberUpdate }:
 
   // Don't render if user doesn't have permission
   if (!hasRolePermission) {
-    return null
+    return (
+      <div className="cp-card p-6">
+        <div className="text-center py-8">
+          <Shield className="w-12 h-12 text-cp-text-muted mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-cp-text-primary mb-2">
+            Role Management Access Required
+          </h3>
+          <p className="text-cp-text-secondary mb-4">
+            You need role management permissions to assign roles to members.
+          </p>
+          <div className="text-cp-text-muted text-sm">
+            <p>Contact an Alliance Administrator to:</p>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Grant you alliance admin privileges</li>
+              <li>Assign you a role with "canAssignRoles" permission</li>
+              <li>Set up the role management system</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
