@@ -400,20 +400,10 @@ export function DashboardLayout({ children, allianceId, currentModule }: Dashboa
 
           {/* Page content */}
           <main className="p-6 pt-20 lg:pt-6">
-            {/* Module Status */}
-            {currentModuleId !== 'dashboard' && currentAllianceId && (
-              <div className="mb-6">
-                <ModuleStatus 
-                  moduleType={currentModuleId as any}
-                  allianceId={currentAllianceId}
-                />
-              </div>
-            )}
-
             {children}
             
-            {/* Quick Actions FAB */}
-            {currentAllianceId && (
+            {/* Quick Actions FAB - only show on non-dashboard pages */}
+            {currentModuleId !== 'dashboard' && currentAllianceId && (
               <ModuleQuickActions 
                 moduleType={currentModuleId as any}
                 allianceId={currentAllianceId}

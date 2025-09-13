@@ -70,12 +70,10 @@ export function GlobalHeader({ currentModule, allianceId, className = '' }: Glob
     cmd.module.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Mock notifications
-  const notifications = [
-    { id: 1, type: 'war', title: 'New war declared', time: '2 min ago', unread: true },
-    { id: 2, type: 'member', title: 'New member application', time: '15 min ago', unread: true },
-    { id: 3, type: 'economic', title: 'Tax collection complete', time: '1 hour ago', unread: false },
-    { id: 4, type: 'quest', title: 'Quest completed by 5 members', time: '2 hours ago', unread: false }
+  // Real notifications would come from API/database
+  const notifications: Array<{id: number; type: string; title: string; time: string; unread: boolean}> = [
+    // Only show real notifications, not placeholder data
+    // { id: 1, type: 'war', title: 'New war declared', time: '2 min ago', unread: true },
   ]
 
   const unreadCount = notifications.filter(n => n.unread).length
@@ -247,29 +245,39 @@ export function GlobalHeader({ currentModule, allianceId, className = '' }: Glob
                   </div>
                 </div>
                 <div className="max-h-64 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`
-                        p-4 border-b border-cp-border last:border-b-0 hover:bg-cp-bg-tertiary
-                        ${notification.unread ? 'bg-cp-cyan/5' : ''}
-                      `}
-                    >
-                      <div className="flex items-start space-x-3">
-                        <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-cp-cyan' : 'bg-cp-text-muted'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-cp-text-primary">{notification.title}</p>
-                          <p className="text-xs text-cp-text-muted mt-1">{notification.time}</p>
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`
+                          p-4 border-b border-cp-border last:border-b-0 hover:bg-cp-bg-tertiary
+                          ${notification.unread ? 'bg-cp-cyan/5' : ''}
+                        `}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${notification.unread ? 'bg-cp-cyan' : 'bg-cp-text-muted'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-cp-text-primary">{notification.title}</p>
+                            <p className="text-xs text-cp-text-muted mt-1">{notification.time}</p>
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-cp-text-muted">
+                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No notifications yet</p>
+                      <p className="text-xs mt-1">You'll see updates here when they happen</p>
                     </div>
-                  ))}
+                  )}
                 </div>
-                <div className="p-4 border-t border-cp-border">
-                  <button className="w-full text-center text-sm text-cp-cyan hover:text-cp-cyan/80">
-                    View all notifications
-                  </button>
-                </div>
+                {notifications.length > 0 && (
+                  <div className="p-4 border-t border-cp-border">
+                    <button className="w-full text-center text-sm text-cp-cyan hover:text-cp-cyan/80">
+                      View all notifications
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -48,64 +48,43 @@ export function ModuleStatus({ moduleType, allianceId, className = '' }: ModuleS
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate fetching module status
+    // Only fetch real data for specific modules that need global status
     const fetchStatus = async () => {
       setLoading(true)
       
-      // Mock status data - in real app, this would come from APIs
-      const mockStatus = {
-        war: {
-          activeWars: 3,
-          recentAlerts: 7,
-          configuredChannels: 2,
-          lastUpdate: new Date(),
-          health: 'good'
-        },
-        membership: {
-          totalMembers: 45,
-          activeMembers: 42,
-          pendingApplications: 3,
-          lastRoleSync: new Date(),
-          health: 'good'
-        },
-        economic: {
-          bankBalance: 1250000,
-          taxCollectionRate: 87,
-          recentTransactions: 12,
-          lastBankUpdate: new Date(),
-          health: 'warning'
-        },
-        quests: {
-          activeQuests: 8,
-          completedToday: 15,
-          membersParticipating: 28,
-          lastQuestAssigned: new Date(),
-          health: 'good'
-        },
-        recruitment: {
-          pendingApplications: 3,
-          approvedThisWeek: 5,
-          rejectedThisWeek: 2,
-          lastReview: new Date(),
-          health: 'warning'
-        },
-        'bot-management': {
-          connectedServers: 2,
-          activeFeatures: 6,
-          lastSync: new Date(),
-          uptime: 99.8,
-          health: 'good'
+      try {
+        // For now, only show status for bot-management and war modules
+        // Other modules have their own detailed stats already
+        if (moduleType === 'bot-management') {
+          // Fetch real bot status
+          const response = await fetch(`/api/bot/status?allianceId=${allianceId}`)
+          if (response.ok) {
+            const data = await response.json()
+            setStatus(data)
+          }
+        } else if (moduleType === 'war') {
+          // Fetch real war status
+          const response = await fetch(`/api/modules/war/status?allianceId=${allianceId}`)
+          if (response.ok) {
+            const data = await response.json()
+            setStatus(data)
+          }
         }
-      }
-
-      setTimeout(() => {
-        setStatus(mockStatus[moduleType])
+        // For other modules, don't show status (they have their own)
+      } catch (error) {
+        console.error('Failed to fetch module status:', error)
+      } finally {
         setLoading(false)
-      }, 500)
+      }
     }
 
     fetchStatus()
   }, [moduleType, allianceId])
+
+  // Don't render status for modules that have their own detailed stats
+  if (['membership', 'economic', 'quests', 'recruitment'].includes(moduleType)) {
+    return null
+  }
 
   if (loading) {
     return (
@@ -116,6 +95,10 @@ export function ModuleStatus({ moduleType, allianceId, className = '' }: ModuleS
         </div>
       </div>
     )
+  }
+
+  if (!status) {
+    return null
   }
 
   const renderStatusContent = () => {

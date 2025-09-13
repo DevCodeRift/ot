@@ -23,6 +23,14 @@ interface ModuleQuickActionsProps {
 export function ModuleQuickActions({ moduleType, allianceId, className = '' }: ModuleQuickActionsProps) {
   const [isOpen, setIsOpen] = useState(false)
 
+  // Only show quick actions for modules that benefit from them
+  // Modules like membership already have comprehensive UIs
+  const shouldShowActions = ['war', 'bot-management'].includes(moduleType)
+  
+  if (!shouldShowActions) {
+    return null
+  }
+
   const actionsByModule: Record<string, QuickAction[]> = {
     war: [
       {
