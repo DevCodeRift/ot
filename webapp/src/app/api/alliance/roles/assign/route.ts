@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { checkRoleManagerPermission, checkAllianceAdminPermission } from '@/lib/role-permissions'
+import { checkRoleManagerPermission } from '@/lib/role-permissions'
 import { z } from 'zod'
 
 // Schema for role assignment
@@ -12,13 +12,13 @@ const assignRoleSchema = z.object({
   expiresAt: z.string().optional().transform(val => val ? new Date(val) : undefined)
 })
 
-// POST /api/alliance/roles/assign - Assign role to user
+// POST /api/alliance/roles/assign - Assign role to user with upsert logic
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     // Get alliance ID from query parameter or user's current alliance
@@ -78,29 +78,25 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Check if user already has this role
-    const existingAssignment = await prisma.userAllianceRole.findFirst({
+    // Use upsert to handle the unique constraint properly
+    const assignment = await prisma.userAllianceRole.upsert({
       where: {
-        userId: validatedData.userId,
-        roleId: validatedData.roleId,
-        allianceId: allianceId,
-        isActive: true,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } }
-        ]
-      }
-    })
-
-    if (existingAssignment) {
-      return NextResponse.json({ 
-        error: 'User already has this role assigned' 
-      }, { status: 400 })
-    }
-
-    // Create the role assignment
-    const assignment = await prisma.userAllianceRole.create({
-      data: {
+        // Use the compound unique key
+        userId_allianceId_roleId: {
+          userId: validatedData.userId,
+          allianceId: allianceId,
+          roleId: validatedData.roleId
+        }
+      },
+      update: {
+        // Update existing assignment to be active
+        assignedBy: session.user.id,
+        assignedAt: new Date(),
+        expiresAt: validatedData.expiresAt || null,
+        isActive: true
+      },
+      create: {
+        // Create new assignment
         userId: validatedData.userId,
         roleId: validatedData.roleId,
         allianceId: allianceId,
@@ -108,7 +104,42 @@ export async function POST(request: NextRequest) {
         assignedAt: new Date(),
         expiresAt: validatedData.expiresAt || null,
         isActive: true
-      },
+      }
+    })
+
+    // Sync with Discord (if Discord integration is enabled)
+    try {
+      // Get the target user's Discord ID for sync
+      const roleAny = role as any
+      if (targetUser.discordId && roleAny.discordRoleId) {
+        const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/bot/discord-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
+          },
+          body: JSON.stringify({
+            action: 'assign',
+            userId: targetUser.discordId,
+            roleId: roleAny.discordRoleId,
+            roleName: role.name,
+            allianceId: allianceId
+          })
+        })
+
+        // Log Discord sync result (don't fail the main operation if Discord sync fails)
+        if (!syncResponse.ok) {
+          console.warn('Discord sync failed for role assignment:', await syncResponse.text())
+        }
+      }
+    } catch (discordError) {
+      console.warn('Discord sync error:', discordError)
+      // Continue - Discord sync failure shouldn't prevent role assignment
+    }
+
+    // Get the assignment with user and role details for response
+    const assignmentWithDetails = await prisma.userAllianceRole.findUnique({
+      where: { id: assignment.id },
       include: {
         user: {
           select: {
@@ -123,40 +154,11 @@ export async function POST(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            color: true,
-            discordRoleId: true
+            color: true
           }
         }
       }
     })
-
-    // Sync to Discord if both user has Discord ID and role has Discord role ID
-    if (assignment.user.discordId && assignment.role.discordRoleId) {
-      try {
-        const discordSyncResult = await fetch(`${process.env.NEXTAUTH_URL}/api/bot/discord-sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
-          },
-          body: JSON.stringify({
-            action: 'assign',
-            discordUserId: assignment.user.discordId,
-            discordRoleId: assignment.role.discordRoleId,
-            allianceId: allianceId
-          })
-        })
-
-        if (discordSyncResult.ok) {
-          console.log(`Successfully synced role assignment to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
-        } else {
-          console.warn(`Failed to sync role assignment to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
-        }
-      } catch (discordError) {
-        console.error('Discord sync error during role assignment:', discordError)
-        // Don't fail the role assignment if Discord sync fails
-      }
-    }
 
     return NextResponse.json({
       success: true,
@@ -168,8 +170,8 @@ export async function POST(request: NextRequest) {
         assignedBy: assignment.assignedBy,
         assignedAt: assignment.assignedAt,
         expiresAt: assignment.expiresAt,
-        user: assignment.user,
-        role: assignment.role
+        user: assignmentWithDetails?.user,
+        role: assignmentWithDetails?.role
       }
     })
 
@@ -194,20 +196,12 @@ export async function DELETE(request: NextRequest) {
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
     // Get alliance ID from query parameter or user's current alliance
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const roleId = searchParams.get('roleId')
     const queryAllianceId = searchParams.get('allianceId')
-
-    if (!userId || !roleId) {
-      return NextResponse.json({ 
-        error: 'User ID and Role ID are required' 
-      }, { status: 400 })
-    }
     
     let allianceId: number
     if (queryAllianceId) {
@@ -221,7 +215,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'User not in an alliance' }, { status: 400 })
     }
 
-    // Check permissions
+    // Check if user has role assignment permissions
     const roleCheck = await checkRoleManagerPermission()
     
     if (!roleCheck.hasRole) {
@@ -230,58 +224,50 @@ export async function DELETE(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Find the active role assignment
-    const assignment = await prisma.userAllianceRole.findFirst({
+    const body = await request.json()
+    const validatedData = assignRoleSchema.parse(body)
+
+    // Get the role and user details for Discord sync
+    const role = await prisma.allianceRole.findFirst({
       where: {
-        userId: userId,
-        roleId: roleId,
+        id: validatedData.roleId,
         allianceId: allianceId,
-        isActive: true,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } }
-        ]
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            discordUsername: true,
-            pwNationName: true,
-            discordId: true
-          }
-        },
-        role: {
-          select: {
-            id: true,
-            name: true,
-            discordRoleId: true
-          }
-        }
+        isActive: true
       }
     })
 
-    if (!assignment) {
+    const targetUser = await prisma.user.findFirst({
+      where: {
+        id: validatedData.userId,
+        currentAllianceId: allianceId
+      }
+    })
+
+    // Find and deactivate the role assignment
+    const updated = await prisma.userAllianceRole.updateMany({
+      where: {
+        userId: validatedData.userId,
+        roleId: validatedData.roleId,
+        allianceId: allianceId,
+        isActive: true
+      },
+      data: { 
+        isActive: false 
+      }
+    })
+
+    if (updated.count === 0) {
       return NextResponse.json({ 
-        error: 'Role assignment not found or already inactive' 
+        error: 'No active role assignment found to remove' 
       }, { status: 404 })
     }
 
-    // Deactivate the role assignment
-    await prisma.userAllianceRole.update({
-      where: {
-        id: assignment.id
-      },
-      data: {
-        isActive: false
-      }
-    })
-
-    // Sync to Discord if both user has Discord ID and role has Discord role ID
-    if (assignment.user.discordId && assignment.role.discordRoleId) {
-      try {
-        const discordSyncResult = await fetch(`${process.env.NEXTAUTH_URL}/api/bot/discord-sync`, {
+    // Sync with Discord (if Discord integration is enabled)
+    try {
+      // Get the target user's Discord ID for sync
+      const roleAny = role as any
+      if (targetUser?.discordId && roleAny?.discordRoleId && role?.name) {
+        const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/bot/discord-sync`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -289,36 +275,37 @@ export async function DELETE(request: NextRequest) {
           },
           body: JSON.stringify({
             action: 'remove',
-            discordUserId: assignment.user.discordId,
-            discordRoleId: assignment.role.discordRoleId,
+            userId: targetUser.discordId,
+            roleId: roleAny.discordRoleId,
+            roleName: role.name,
             allianceId: allianceId
           })
         })
 
-        if (discordSyncResult.ok) {
-          console.log(`Successfully synced role removal to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
-        } else {
-          console.warn(`Failed to sync role removal to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
+        // Log Discord sync result (don't fail the main operation if Discord sync fails)
+        if (!syncResponse.ok) {
+          console.warn('Discord sync failed for role removal:', await syncResponse.text())
         }
-      } catch (discordError) {
-        console.error('Discord sync error during role removal:', discordError)
-        // Don't fail the role removal if Discord sync fails
       }
+    } catch (discordError) {
+      console.warn('Discord sync error:', discordError)
+      // Continue - Discord sync failure shouldn't prevent role removal
     }
 
     return NextResponse.json({
       success: true,
-      message: `Role "${assignment.role.name}" removed from user "${assignment.user.name || assignment.user.discordUsername || assignment.user.pwNationName || 'Unknown'}" successfully`,
-      removedAssignment: {
-        id: assignment.id,
-        userId: assignment.userId,
-        roleId: assignment.roleId,
-        user: assignment.user,
-        role: assignment.role
-      }
+      message: 'Role removed successfully',
+      removedCount: updated.count
     })
 
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ 
+        error: 'Validation error',
+        details: error.issues
+      }, { status: 400 })
+    }
+
     console.error('Remove role error:', error)
     return NextResponse.json({ 
       error: 'Internal server error' 
