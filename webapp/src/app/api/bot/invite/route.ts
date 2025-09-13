@@ -37,12 +37,11 @@ export async function POST(request: NextRequest) {
       defaultPermissions
 
     // Generate Discord OAuth2 authorize URL for bot invite
-    const scope = 'bot applications.commands'
     const inviteUrl = new URL('https://discord.com/api/oauth2/authorize')
     
     inviteUrl.searchParams.set('client_id', botClientId)
     inviteUrl.searchParams.set('permissions', permissionValue.toString())
-    inviteUrl.searchParams.set('scope', scope)
+    inviteUrl.searchParams.set('scope', 'bot') // Test with just bot scope to see detailed permissions
     inviteUrl.searchParams.set('guild_id', serverId)
     
     // Bot invites don't typically use redirect URIs
