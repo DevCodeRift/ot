@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { DashboardLayout } from '@/components/dashboard/layout'
 import { getUserAvailableModules } from '@/lib/module-access'
 import Link from 'next/link'
 
@@ -53,8 +52,7 @@ export default async function AllianceDashboardPage({ params }: DashboardPagePro
   }
 
   return (
-    <DashboardLayout allianceId={allianceId}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Welcome section */}
         <div className="cp-card p-6">
           <h1 className="text-2xl font-bold font-cyberpunk text-cp-text-primary mb-2">
@@ -182,6 +180,5 @@ export default async function AllianceDashboardPage({ params }: DashboardPagePro
           </div>
         )}
       </div>
-    </DashboardLayout>
   )
 }

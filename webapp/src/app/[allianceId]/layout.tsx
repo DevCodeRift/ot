@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { DashboardLayout } from '@/components/dashboard/layout'
 
 interface AllianceLayoutProps {
   children: React.ReactNode
@@ -34,5 +35,9 @@ export default async function AllianceLayout({ children, params }: AllianceLayou
     }
   }
 
-  return <>{children}</>
+  return (
+    <DashboardLayout allianceId={allianceId}>
+      {children}
+    </DashboardLayout>
+  )
 }
