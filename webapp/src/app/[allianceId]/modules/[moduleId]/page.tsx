@@ -70,7 +70,7 @@ export default async function ModulePage({ params }: ModulePageProps) {
         return <EconomicToolsModule allianceId={allianceId} />
       
       case 'war':
-        return <WarModule />
+        return <WarModule allianceId={allianceId} />
       
       case 'banking':
       case 'recruitment':
