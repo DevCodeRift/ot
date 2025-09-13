@@ -13,6 +13,7 @@ declare module "next-auth" {
       currentAllianceId?: number
       isAdmin?: boolean
     } & DefaultSession["user"]
+    accessToken?: string
   }
 
   interface User extends DefaultUser {
@@ -36,5 +37,6 @@ declare module "next-auth/jwt" {
     pwNationName?: string
     currentAllianceId?: number
     isAdmin?: boolean
+    accessToken?: string
   }
 }

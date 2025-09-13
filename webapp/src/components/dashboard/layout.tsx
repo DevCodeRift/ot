@@ -13,7 +13,8 @@ import {
   Shield,
   DollarSign,
   Trophy,
-  UserPlus
+  UserPlus,
+  Bot
 } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -59,6 +60,7 @@ export function DashboardLayout({ children, allianceId }: DashboardLayoutProps) 
     { name: 'Quest & Achievement System', href: `/${currentAllianceId}/modules/quests`, icon: Trophy, current: false },
     { name: 'Recruitment System', href: `/${currentAllianceId}/modules/recruitment`, icon: UserPlus, current: false },
     { name: 'Economic Tools', href: `/${currentAllianceId}/modules/economic-tools`, icon: DollarSign, current: false },
+    { name: 'Bot Management', href: `/${currentAllianceId}/modules/bot-management`, icon: Bot, current: false },
   ]
 
   // Check if user is admin based on Discord ID

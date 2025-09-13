@@ -1,0 +1,734 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                         String                 @id @default(cuid())
+  name                       String?
+  email                      String?                @unique
+  emailVerified              DateTime?
+  image                      String?
+  discordId                  String?                @unique
+  discordUsername            String?
+  pwApiKey                   String?
+  pwNationId                 Int?                   @unique
+  pwNationName               String?
+  currentAllianceId          Int?
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
+  accounts                   Account[]
+  sessions                   Session[]
+  allianceAdminRoles         AllianceAdmin[]
+  auditLogs                  AuditLog[]
+  bankedTransactions         Bankrec[]              @relation("BankerTransactions")
+  receivedBankTransactions   Bankrec[]              @relation("ReceivedTransactions")
+  sentBankTransactions       Bankrec[]              @relation("SentTransactions")
+  holdingTransactions        HoldingTransaction[]
+  memberHoldings             MemberHolding[]
+  givenQuestAssignments      QuestAssignment[]      @relation("QuestAssigner")
+  assignedQuests             QuestAssignment[]      @relation("QuestAssignee")
+  givenRewards               QuestCompletion[]      @relation("QuestRewardGiver")
+  questCompletions           QuestCompletion[]      @relation("QuestCompletionUser")
+  verifiedCompletions        QuestCompletion[]      @relation("QuestVerifier")
+  givenQuestGroupAssignments QuestGroupAssignment[] @relation("QuestGroupAssigner")
+  assignedQuestGroups        QuestGroupAssignment[] @relation("QuestGroupAssignee")
+  createdQuestGroups         QuestGroup[]           @relation("QuestGroupCreator")
+  questNotifications         QuestNotification[]    @relation("QuestNotificationUser")
+  questProgress              QuestProgress[]        @relation("QuestProgressUser")
+  createdQuests              Quest[]                @relation("QuestCreator")
+  createdTaxBrackets         TaxBracket[]           @relation("TaxBracketCreator")
+  modifiedTaxBrackets        TaxBracket[]           @relation("TaxBracketModifier")
+  nation                     Nation?                @relation(fields: [pwNationId], references: [id])
+
+  // Alliance Role Management Relations
+  allianceRoles UserAllianceRole[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Alliance {
+  id                    Int                    @id
+  name                  String
+  acronym               String?
+  score                 Float?
+  color                 String?
+  foundedDate           DateTime?
+  acceptMembers         Boolean                @default(true)
+  flag                  String?
+  forumLink             String?
+  discordLink           String?
+  wikiLink              String?
+  description           String?
+  averageScore          Float?
+  rank                  Int?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  money                 Float?
+  coal                  Float?
+  oil                   Float?
+  uranium               Float?
+  iron                  Float?
+  bauxite               Float?
+  lead                  Float?
+  gasoline              Float?
+  munitions             Float?
+  steel                 Float?
+  aluminum              Float?
+  food                  Float?
+  allianceAdmins        AllianceAdmin[]
+  apiKey                AllianceApiKey?
+  allianceModules       AllianceModule[]
+  bankRecords           Bankrec[]              @relation("AllianceBankRecords")
+  discordServers        DiscordServer[]
+  memberHoldings        MemberHolding[]
+  nations               Nation[]
+  questAssignments      QuestAssignment[]
+  questCompletions      QuestCompletion[]
+  questGroupAssignments QuestGroupAssignment[]
+  questGroups           QuestGroup[]
+  questNotifications    QuestNotification[]
+  questProgress         QuestProgress[]
+  quests                Quest[]
+  taxBrackets           TaxBracket[]
+  treaties              Treaty[]               @relation("Alliance1Treaties")
+  receivedTreaties      Treaty[]               @relation("Alliance2Treaties")
+  wars                  War[]                  @relation("AllianceWars")
+
+  // Alliance Role Management Relations
+  allianceRoles     AllianceRole[]
+  userAllianceRoles UserAllianceRole[]
+  roleAuditLogs     RoleAuditLog[]
+
+  @@map("alliances")
+}
+
+model AllianceAdmin {
+  id          String   @id @default(cuid())
+  allianceId  Int
+  userId      String
+  discordId   String
+  role        String   @default("admin")
+  permissions String[]
+  addedBy     String
+  addedAt     DateTime @default(now())
+  isActive    Boolean  @default(true)
+  alliance    Alliance @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([allianceId, userId])
+  @@map("alliance_admins")
+}
+
+model AllianceApiKey {
+  id         String    @id @default(cuid())
+  allianceId Int       @unique
+  apiKey     String
+  keyName    String?
+  addedBy    String
+  addedAt    DateTime  @default(now())
+  lastUsed   DateTime?
+  isActive   Boolean   @default(true)
+  alliance   Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+
+  @@map("alliance_api_keys")
+}
+
+model Nation {
+  id                  Int       @id
+  allianceId          Int?
+  nationName          String
+  leaderName          String
+  continent           String?
+  warPolicy           String?
+  domesticPolicy      String?
+  color               String?
+  numCities           Int?
+  score               Float?
+  population          Int?
+  flag                String?
+  vacationModeturns   Int?
+  beigeTurns          Int?
+  lastActive          DateTime?
+  foundedDate         DateTime?
+  discordId           String?
+  discordUsername     String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  soldiers            Int?
+  tanks               Int?
+  aircraft            Int?
+  ships               Int?
+  missiles            Int?
+  nukes               Int?
+  spies               Int?
+  money               Float?
+  coal                Float?
+  oil                 Float?
+  uranium             Float?
+  iron                Float?
+  bauxite             Float?
+  lead                Float?
+  gasoline            Float?
+  munitions           Float?
+  steel               Float?
+  aluminum            Float?
+  food                Float?
+  credits             Int?
+  bankedRecords       Bankrec[] @relation("NationBankerRecords")
+  receivedBankRecords Bankrec[] @relation("NationReceivedBankRecords")
+  sentBankRecords     Bankrec[] @relation("NationSentBankRecords")
+  cities              City[]
+  alliance            Alliance? @relation(fields: [allianceId], references: [id])
+  user                User?
+  offensiveWars       War[]     @relation("AttackerWars")
+  defensiveWars       War[]     @relation("DefenderWars")
+
+  @@map("nations")
+}
+
+model City {
+  id             Int       @id
+  nationId       Int
+  name           String
+  founded        DateTime?
+  infrastructure Float?
+  land           Float?
+  population     Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  nation         Nation    @relation(fields: [nationId], references: [id])
+
+  @@map("cities")
+}
+
+model War {
+  id             Int         @id
+  declaredDate   DateTime
+  endedDate      DateTime?
+  reason         String?
+  warType        String?
+  groundControl  Int?
+  airSuperiority Int?
+  navalBlockade  Int?
+  winnerId       Int?
+  turnsLeft      Int?
+  attackerId     Int
+  defenderId     Int
+  attAllianceId  Int?
+  defAllianceId  Int?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  attacks        WarAttack[]
+  attAlliance    Alliance?   @relation("AllianceWars", fields: [attAllianceId], references: [id])
+  attacker       Nation      @relation("AttackerWars", fields: [attackerId], references: [id])
+  defender       Nation      @relation("DefenderWars", fields: [defenderId], references: [id])
+
+  @@map("wars")
+}
+
+model WarAttack {
+  id               Int      @id
+  warId            Int
+  attackerId       Int
+  defenderId       Int
+  attackType       String
+  date             DateTime
+  victor           Int
+  success          Int
+  cityId           Int?
+  infraDestroyed   Float?
+  improvementsLost Int?
+  moneyStolen      Float?
+  resistanceLost   Int?
+  createdAt        DateTime @default(now())
+  war              War      @relation(fields: [warId], references: [id])
+
+  @@map("war_attacks")
+}
+
+model Treaty {
+  id          Int       @id
+  alliance1Id Int
+  alliance2Id Int
+  treatyType  String
+  treatyUrl   String?
+  turnsLeft   Int?
+  approved    Boolean   @default(false)
+  signedDate  DateTime?
+  createdAt   DateTime  @default(now())
+  alliance1   Alliance  @relation("Alliance1Treaties", fields: [alliance1Id], references: [id])
+  alliance2   Alliance  @relation("Alliance2Treaties", fields: [alliance2Id], references: [id])
+
+  @@map("treaties")
+}
+
+model Bankrec {
+  id                 String    @id @default(cuid())
+  pwId               Int?      @unique
+  date               DateTime
+  senderId           String?
+  receiverId         String?
+  bankerId           String?
+  senderNationId     Int?
+  receiverNationId   Int?
+  bankerNationId     Int?
+  senderAllianceId   Int?
+  receiverAllianceId Int?
+  senderType         Int
+  receiverType       Int
+  note               String?
+  taxId              Int?
+  createdAt          DateTime  @default(now())
+  money              Float?
+  coal               Float?
+  oil                Float?
+  uranium            Float?
+  iron               Float?
+  bauxite            Float?
+  lead               Float?
+  gasoline           Float?
+  munitions          Float?
+  steel              Float?
+  aluminum           Float?
+  food               Float?
+  banker             User?     @relation("BankerTransactions", fields: [bankerId], references: [id])
+  bankerNation       Nation?   @relation("NationBankerRecords", fields: [bankerNationId], references: [id])
+  receiver           User?     @relation("ReceivedTransactions", fields: [receiverId], references: [id])
+  receiverNation     Nation?   @relation("NationReceivedBankRecords", fields: [receiverNationId], references: [id])
+  alliance           Alliance? @relation("AllianceBankRecords", fields: [senderAllianceId], references: [id])
+  sender             User?     @relation("SentTransactions", fields: [senderId], references: [id])
+  senderNation       Nation?   @relation("NationSentBankRecords", fields: [senderNationId], references: [id])
+
+  @@map("bank_records")
+}
+
+model TaxBracket {
+  id              Int       @id
+  allianceId      Int
+  name            String
+  taxRate         Int
+  resourceTaxRate Int
+  createdDate     DateTime
+  modifiedDate    DateTime?
+  creatorId       String?
+  lastModifierId  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  alliance        Alliance  @relation(fields: [allianceId], references: [id])
+  creator         User?     @relation("TaxBracketCreator", fields: [creatorId], references: [id])
+  lastModifier    User?     @relation("TaxBracketModifier", fields: [lastModifierId], references: [id])
+
+  @@map("tax_brackets")
+}
+
+model Module {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  description     String?
+  category        String?
+  requiredPerms   String[]
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  allianceModules AllianceModule[]
+
+  @@map("modules")
+}
+
+model AllianceModule {
+  id         String   @id @default(cuid())
+  allianceId Int
+  moduleId   String
+  enabled    Boolean  @default(true)
+  enabledBy  String?
+  enabledAt  DateTime @default(now())
+  settings   Json?
+  alliance   Alliance @relation(fields: [allianceId], references: [id])
+  module     Module   @relation(fields: [moduleId], references: [id])
+
+  @@unique([allianceId, moduleId])
+  @@map("alliance_modules")
+}
+
+model DiscordServer {
+  id             String       @id
+  name           String?
+  allianceId     Int?
+  ownerId        String?
+  invitedBy      String?
+  isActive       Boolean      @default(true)
+  settings       Json?
+  enabledModules String[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  botSettings    BotSetting[]
+  alliance       Alliance?    @relation(fields: [allianceId], references: [id])
+
+  @@map("discord_servers")
+}
+
+model BotSetting {
+  id        String        @id @default(cuid())
+  serverId  String
+  key       String
+  value     String
+  category  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  server    DiscordServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, key])
+  @@map("bot_settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  resource   String?
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model MemberHolding {
+  id             String               @id @default(cuid())
+  userId         String
+  allianceId     Int
+  money          Float                @default(0)
+  coal           Float                @default(0)
+  oil            Float                @default(0)
+  uranium        Float                @default(0)
+  iron           Float                @default(0)
+  bauxite        Float                @default(0)
+  lead           Float                @default(0)
+  gasoline       Float                @default(0)
+  munitions      Float                @default(0)
+  steel          Float                @default(0)
+  aluminum       Float                @default(0)
+  food           Float                @default(0)
+  totalDeposited Float                @default(0)
+  totalWithdrawn Float                @default(0)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  transactions   HoldingTransaction[]
+  alliance       Alliance             @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, allianceId])
+  @@map("member_holdings")
+}
+
+model HoldingTransaction {
+  id             String        @id @default(cuid())
+  holdingId      String
+  userId         String
+  type           String
+  money          Float?
+  coal           Float?
+  oil            Float?
+  uranium        Float?
+  iron           Float?
+  bauxite        Float?
+  lead           Float?
+  gasoline       Float?
+  munitions      Float?
+  steel          Float?
+  aluminum       Float?
+  food           Float?
+  pwBankRecordId Int?
+  note           String?
+  createdAt      DateTime      @default(now())
+  holding        MemberHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("holding_transactions")
+}
+
+model QuestGroup {
+  id           String                 @id @default(cuid())
+  allianceId   Int
+  name         String
+  description  String?
+  icon         String?
+  color        String?
+  isActive     Boolean                @default(true)
+  displayOrder Int                    @default(0)
+  createdBy    String
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  assignments  QuestGroupAssignment[]
+  alliance     Alliance               @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  creator      User                   @relation("QuestGroupCreator", fields: [createdBy], references: [id])
+  quests       Quest[]
+
+  @@map("quest_groups")
+}
+
+model Quest {
+  id             String              @id @default(cuid())
+  allianceId     Int
+  questGroupId   String?
+  name           String
+  description    String?
+  questType      String
+  targetMetric   String
+  targetValue    Float
+  comparisonType String              @default("gte")
+  difficulty     String              @default("easy")
+  estimatedTime  String?
+  priority       Int                 @default(1)
+  isRepeatable   Boolean             @default(false)
+  maxCompletions Int?
+  requiredLevel  Int                 @default(0)
+  prerequisites  String[]
+  rewardType     String?
+  rewardValue    Float?
+  rewardData     Json?
+  isActive       Boolean             @default(true)
+  displayOrder   Int                 @default(0)
+  createdBy      String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  assignments    QuestAssignment[]
+  completions    QuestCompletion[]
+  notifications  QuestNotification[]
+  progress       QuestProgress[]
+  alliance       Alliance            @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  creator        User                @relation("QuestCreator", fields: [createdBy], references: [id])
+  questGroup     QuestGroup?         @relation(fields: [questGroupId], references: [id])
+
+  @@map("quests")
+}
+
+model QuestGroupAssignment {
+  id           String     @id @default(cuid())
+  allianceId   Int
+  questGroupId String
+  assignedToId String
+  assignedById String
+  dueDate      DateTime?
+  notes        String?
+  status       String     @default("active")
+  assignedAt   DateTime   @default(now())
+  completedAt  DateTime?
+  alliance     Alliance   @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  assignedBy   User       @relation("QuestGroupAssigner", fields: [assignedById], references: [id])
+  assignedTo   User       @relation("QuestGroupAssignee", fields: [assignedToId], references: [id], onDelete: Cascade)
+  questGroup   QuestGroup @relation(fields: [questGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([questGroupId, assignedToId])
+  @@map("quest_group_assignments")
+}
+
+model QuestAssignment {
+  id           String    @id @default(cuid())
+  allianceId   Int
+  questId      String
+  assignedToId String
+  assignedById String
+  dueDate      DateTime?
+  notes        String?
+  status       String    @default("active")
+  assignedAt   DateTime  @default(now())
+  completedAt  DateTime?
+  alliance     Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  assignedBy   User      @relation("QuestAssigner", fields: [assignedById], references: [id])
+  assignedTo   User      @relation("QuestAssignee", fields: [assignedToId], references: [id], onDelete: Cascade)
+  quest        Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, assignedToId])
+  @@map("quest_assignments")
+}
+
+model QuestProgress {
+  id               String    @id @default(cuid())
+  allianceId       Int
+  questId          String
+  userId           String
+  currentValue     Float     @default(0)
+  startingValue    Float?
+  lastCheckedAt    DateTime  @default(now())
+  milestonesPassed String[]
+  isCompleted      Boolean   @default(false)
+  completedAt      DateTime?
+  dataSnapshot     Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  alliance         Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  quest            Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user             User      @relation("QuestProgressUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, userId])
+  @@map("quest_progress")
+}
+
+model QuestCompletion {
+  id             String    @id @default(cuid())
+  allianceId     Int
+  questId        String
+  userId         String
+  assignmentId   String?
+  finalValue     Float
+  completedAt    DateTime  @default(now())
+  verifiedBy     String?
+  verifiedAt     DateTime?
+  completionType String    @default("automatic")
+  dataSnapshot   Json?
+  notes          String?
+  rewardGiven    Boolean   @default(false)
+  rewardGivenAt  DateTime?
+  rewardGivenBy  String?
+  alliance       Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  quest          Quest     @relation(fields: [questId], references: [id], onDelete: Cascade)
+  rewardGiver    User?     @relation("QuestRewardGiver", fields: [rewardGivenBy], references: [id])
+  user           User      @relation("QuestCompletionUser", fields: [userId], references: [id], onDelete: Cascade)
+  verifier       User?     @relation("QuestVerifier", fields: [verifiedBy], references: [id])
+
+  @@map("quest_completions")
+}
+
+model QuestNotification {
+  id               String    @id @default(cuid())
+  allianceId       Int
+  questId          String?
+  userId           String?
+  type             String
+  title            String
+  message          String
+  sendToUser       Boolean   @default(true)
+  sendToAdmins     Boolean   @default(false)
+  sendToDiscord    Boolean   @default(false)
+  discordChannelId String?
+  isRead           Boolean   @default(false)
+  sentAt           DateTime?
+  readAt           DateTime?
+  createdAt        DateTime  @default(now())
+  alliance         Alliance  @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  quest            Quest?    @relation(fields: [questId], references: [id])
+  user             User?     @relation("QuestNotificationUser", fields: [userId], references: [id])
+
+  @@map("quest_notifications")
+}
+
+// Alliance Role Management System
+model AllianceRole {
+  id          String  @id @default(cuid())
+  allianceId  Int // Alliance this role belongs to
+  name        String // Role name (e.g., "Role Manager", "Quest Manager")
+  description String? // Optional description of the role
+  color       String? // Hex color for UI display
+
+  // Module Permissions - which modules this role can access
+  modulePermissions String[] // Array of module IDs (membership, war, quests, etc.)
+
+  // Specific Permissions
+  canAssignRoles       Boolean @default(false) // Can assign roles to users
+  canCreateQuests      Boolean @default(false) // Can create and manage quests
+  canManageMembers     Boolean @default(false) // Can manage alliance members
+  canViewWarData       Boolean @default(false) // Can view war-related data
+  canManageEconomics   Boolean @default(false) // Can manage economic tools
+  canManageRecruitment Boolean @default(false) // Can manage recruitment
+
+  // Role Management
+  createdBy    String // User ID who created this role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0) // Order for UI display
+
+  alliance  Alliance           @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  userRoles UserAllianceRole[]
+
+  @@unique([allianceId, name]) // Unique role names per alliance
+  @@map("alliance_roles")
+}
+
+model UserAllianceRole {
+  id         String @id @default(cuid())
+  userId     String // User who has this role
+  allianceId Int // Alliance context
+  roleId     String // Role being assigned
+
+  // Assignment Tracking
+  assignedBy String // User ID who assigned this role
+  assignedAt DateTime  @default(now())
+  expiresAt  DateTime? // Optional expiration date
+  isActive   Boolean   @default(true)
+
+  // Relations
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alliance Alliance     @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  role     AllianceRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, allianceId, roleId]) // User can only have each role once per alliance
+  @@map("user_alliance_roles")
+}
+
+// Role permission audit log for tracking changes
+model RoleAuditLog {
+  id         String @id @default(cuid())
+  allianceId Int // Alliance context
+  actionType String // role_created, role_updated, role_assigned, role_revoked
+
+  // Action Details
+  performedBy  String // User ID who performed the action
+  targetUserId String? // User affected (for assignments/revocations)
+  roleId       String? // Role affected
+  roleName     String? // Role name for historical reference
+
+  // Change Details
+  oldPermissions Json? // Previous permissions (for updates)
+  newPermissions Json? // New permissions (for updates)
+  changeReason   String? // Optional reason for the change
+
+  createdAt DateTime @default(now())
+
+  alliance Alliance @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+
+  @@map("role_audit_logs")
+}

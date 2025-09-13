@@ -11,7 +11,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: "identify email"
+          scope: "identify email guilds"
         }
       }
     }),
@@ -73,7 +73,13 @@ export const authOptions: NextAuthOptions = {
         if (account?.provider === "discord") {
           token.discordId = account.providerAccountId
           token.discordUsername = user.name || undefined
+          token.accessToken = account.access_token
         }
+      }
+
+      // Store access token from account
+      if (account) {
+        token.accessToken = account.access_token
       }
       return token
     },
@@ -86,6 +92,7 @@ export const authOptions: NextAuthOptions = {
         session.user.pwNationId = token.pwNationId
         session.user.pwNationName = token.pwNationName
         session.user.currentAllianceId = token.currentAllianceId
+        session.accessToken = token.accessToken
       }
       return session
     },
