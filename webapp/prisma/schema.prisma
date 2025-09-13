@@ -386,18 +386,19 @@ model AllianceModule {
 }
 
 model DiscordServer {
-  id             String       @id
+  id             String            @id
   name           String?
   allianceId     Int?
   ownerId        String?
   invitedBy      String?
-  isActive       Boolean      @default(true)
+  isActive       Boolean           @default(true)
   settings       Json?
   enabledModules String[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   botSettings    BotSetting[]
-  alliance       Alliance?    @relation(fields: [allianceId], references: [id])
+  channelConfigs ChannelConfig[]
+  alliance       Alliance?         @relation(fields: [allianceId], references: [id])
 
   @@map("discord_servers")
 }
@@ -414,6 +415,22 @@ model BotSetting {
 
   @@unique([serverId, key])
   @@map("bot_settings")
+}
+
+model ChannelConfig {
+  id          String        @id @default(cuid())
+  serverId    String
+  module      String        // e.g., "war", "economics", "recruitment"
+  eventType   String        // e.g., "war_alerts", "tax_reminders", "member_updates"
+  channelId   String
+  isActive    Boolean       @default(true)
+  settings    Json?         // Additional event-specific settings
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  server      DiscordServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, module, eventType])
+  @@map("channel_configs")
 }
 
 model AuditLog {

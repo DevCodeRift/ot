@@ -6,6 +6,7 @@ import * as winston from 'winston';
 import { SlashCommand } from './types/discord';
 import { loadCommands } from './utils/commandLoader';
 import { loadEvents } from './utils/eventLoader';
+import { PWKitSubscriptionService } from './services/pnwkitSubscriptionService';
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +35,9 @@ const logger = winston.createLogger({
 // Initialize Prisma client (shared database with webapp)
 const prisma = new PrismaClient();
 
+// Initialize P&W subscription service (using pnwkit-2.0)
+let pwSubscriptionService: PWKitSubscriptionService;
+
 // Initialize Discord client
 const client = new Client({
   intents: [
@@ -54,10 +58,12 @@ app.use(express.json());
 // Import route handlers
 import rolesRouter from './routes/roles';
 import testRouter from './routes/test';
+import channelsRouter from './routes/channels';
 
 // Use route handlers
 app.use('/api', rolesRouter);
 app.use('/api', testRouter);
+app.use('/api', channelsRouter);
 
 // Health check endpoint
 app.get('/health', (req: express.Request, res: express.Response) => {
@@ -131,6 +137,12 @@ async function shutdown() {
   logger.info('🔄 Shutting down Discord bot...');
   
   try {
+    // Shutdown P&W subscription service
+    if (pwSubscriptionService) {
+      await pwSubscriptionService.shutdown();
+      logger.info('📡 P&W subscription service shutdown');
+    }
+    
     await prisma.$disconnect();
     logger.info('📦 Database connection closed');
     
@@ -163,6 +175,20 @@ async function start() {
     // Login to Discord
     await client.login(process.env.DISCORD_BOT_TOKEN);
     
+    // Initialize P&W subscription service after Discord is ready
+    client.once(Events.ClientReady, async () => {
+      logger.info('🤖 Discord bot is ready!');
+      
+      // Initialize P&W subscription service
+      try {
+        pwSubscriptionService = new PWKitSubscriptionService(prisma, logger);
+        await pwSubscriptionService.initialize();
+        logger.info('📡 P&W subscription service initialized');
+      } catch (error) {
+        logger.error('Failed to initialize P&W subscription service:', error);
+      }
+    });
+    
   } catch (error) {
     logger.error('Failed to start Discord bot:', error);
     process.exit(1);
@@ -171,6 +197,9 @@ async function start() {
 
 // Export instances for use in other modules
 export { client, prisma, logger };
+
+// Export function to get client instance
+export const getDiscordClient = () => client;
 
 // Start the application
 if (require.main === module) {
