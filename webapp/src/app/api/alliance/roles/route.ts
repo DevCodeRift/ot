@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     // Create audit log
     await prisma.roleAuditLog.create({
       data: {
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         actionType: 'role_created',
         performedBy: session.user.id,
         roleId: newRole.id,
