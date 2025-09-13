@@ -37,7 +37,6 @@ interface War {
 export class PWKitSubscriptionService {
   private prisma: PrismaClient;
   private logger: winston.Logger;
-  private apiKey: string;
   private isSubscribed = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -46,49 +45,21 @@ export class PWKitSubscriptionService {
   constructor(prisma: PrismaClient, logger: winston.Logger) {
     this.prisma = prisma;
     this.logger = logger;
-    this.apiKey = process.env.POLITICS_AND_WAR_API_KEY!;
     
-    if (!this.apiKey) {
-      throw new Error('POLITICS_AND_WAR_API_KEY environment variable is required');
-    }
+    // Note: No global API key required - will get per-alliance keys from webapp
   }
 
   async initialize() {
     try {
       this.logger.info('[PNWKIT_SUBSCRIPTION] Initializing pnwkit subscription service...');
+      this.logger.info('[PNWKIT_SUBSCRIPTION] P&W API keys will be obtained per-alliance from webapp');
       
-      // Set API key for pnwkit
-      pnwkit.setKeys(this.apiKey);
-      
-      // Get all active alliance IDs from our database
-      const activeAlliances = await this.prisma.discordServer.findMany({
-        where: {
-          isActive: true,
-          allianceId: {
-            not: null
-          }
-        },
-        select: {
-          allianceId: true
-        },
-        distinct: ['allianceId']
-      });
-
-      const allianceIds = activeAlliances
-        .map(server => server.allianceId)
-        .filter(id => id !== null) as number[];
-
-      if (allianceIds.length === 0) {
-        this.logger.warn('[PNWKIT_SUBSCRIPTION] No active alliances found, skipping subscription setup');
-        return;
-      }
-
-      // Subscribe to war events
-      await this.subscribeToWarEvents(allianceIds);
+      // Service is now ready but won't subscribe until we have alliance-specific API keys
+      this.logger.info('[PNWKIT_SUBSCRIPTION] Service initialized (waiting for alliance-specific API keys)');
       
     } catch (error) {
-      this.logger.error('[PNWKIT_SUBSCRIPTION] Failed to initialize subscription service:', error);
-      this.scheduleReconnect();
+      this.logger.error('[PNWKIT_SUBSCRIPTION] Failed to initialize:', error);
+      throw error;
     }
   }
 

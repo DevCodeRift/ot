@@ -390,7 +390,9 @@ async function start() {
     client.once(Events.ClientReady, async () => {
       logger.info('🤖 Discord bot is ready!');
       
-      // Initialize P&W subscription service
+      // TODO: Initialize P&W subscription service with alliance-specific API keys from webapp
+      // Currently disabled until proper integration with webapp API keys is implemented
+      /*
       try {
         pwSubscriptionService = new PWKitSubscriptionService(prisma, logger);
         await pwSubscriptionService.initialize();
@@ -398,6 +400,7 @@ async function start() {
       } catch (error) {
         logger.error('Failed to initialize P&W subscription service:', error);
       }
+      */
       
       // Initialize Automated Monitoring Service
       try {
