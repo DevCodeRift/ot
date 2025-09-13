@@ -7,6 +7,7 @@ import { SlashCommand } from './types/discord';
 import { loadCommands } from './utils/commandLoader';
 import { loadEvents } from './utils/eventLoader';
 import { PWKitSubscriptionService } from './services/pnwkitSubscriptionService';
+import { AutomatedMonitoringService } from './services/automatedMonitoringService';
 
 // Load environment variables
 dotenv.config();
@@ -38,6 +39,9 @@ const prisma = new PrismaClient();
 // Initialize P&W subscription service (using pnwkit-2.0)
 let pwSubscriptionService: PWKitSubscriptionService;
 
+// Initialize automated monitoring service
+let monitoringService: AutomatedMonitoringService;
+
 // Initialize Discord client
 const client = new Client({
   intents: [
@@ -67,12 +71,204 @@ app.use('/api', channelsRouter);
 
 // Health check endpoint
 app.get('/health', (req: express.Request, res: express.Response) => {
-  res.json({ 
-    status: 'ok', 
-    bot: client.isReady() ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString()
-  });
-});
+  try {
+    const uptime = process.uptime()
+    const memUsage = process.memoryUsage()
+    
+    res.json({
+      status: 'ok',
+      uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
+      uptimeSeconds: Math.floor(uptime),
+      memory: {
+        used: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+        total: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+        rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`
+      },
+      discord: {
+        status: client.isReady() ? 'connected' : 'disconnected',
+        guilds: client.guilds.cache.size,
+        ping: client.ws.ping
+      },
+      details: 'All systems operational',
+      timestamp: new Date().toISOString()
+    })
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    })
+  }
+})
+
+// Status publisher endpoint
+app.post('/api/publish-status', async (req: express.Request, res: express.Response) => {
+  try {
+    const { allianceId, systemStatus, requestedBy } = req.body
+
+    if (!allianceId || !systemStatus) {
+      return res.status(400).json({ error: 'Missing required fields' })
+    }
+
+    // Get Discord servers for this alliance
+    const servers = await prisma.discordServer.findMany({
+      where: {
+        allianceId: parseInt(allianceId),
+        isActive: true
+      },
+      include: {
+        alliance: true
+      }
+    })
+
+    if (servers.length === 0) {
+      return res.status(404).json({ error: 'No Discord servers found for this alliance' })
+    }
+
+    if (!client.isReady()) {
+      return res.status(503).json({ error: 'Discord bot is not ready' })
+    }
+
+    const publishResults = []
+
+    for (const server of servers) {
+      try {
+        // Find a suitable channel for status updates
+        const guild = await client.guilds.fetch(server.id)
+        
+        // Look for status, announcements, or general channels
+        const statusChannel = guild.channels.cache.find((ch: any) => 
+          (ch.name.includes('status') || 
+           ch.name.includes('announcements') || 
+           ch.name.includes('updates') ||
+           ch.name.includes('general')) &&
+          ch.isTextBased()
+        )
+
+        if (statusChannel) {
+          const result = await publishStatusToChannel(statusChannel, systemStatus, server, requestedBy)
+          publishResults.push({
+            serverId: server.id,
+            serverName: server.name,
+            channelId: statusChannel.id,
+            channelName: statusChannel.name,
+            success: result.success,
+            message: result.message
+          })
+        } else {
+          publishResults.push({
+            serverId: server.id,
+            serverName: server.name,
+            channelId: null,
+            success: false,
+            message: 'No suitable status channel found'
+          })
+        }
+      } catch (error) {
+        publishResults.push({
+          serverId: server.id,
+          serverName: server.name,
+          channelId: null,
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    res.json({
+      success: true,
+      published: publishResults.filter(r => r.success).length,
+      total: publishResults.length,
+      results: publishResults
+    })
+
+  } catch (error) {
+    logger.error('Failed to publish status:', error)
+    res.status(500).json({
+      error: 'Failed to publish status',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
+})
+
+async function publishStatusToChannel(channel: any, systemStatus: any, server: any, requestedBy?: string) {
+  try {
+    // Calculate overall system health
+    const allComponents = [
+      systemStatus.webapp,
+      systemStatus.discordBot,
+      systemStatus.database,
+      systemStatus.pwApi,
+      ...Object.values(systemStatus.modules)
+    ]
+
+    const healthyCount = allComponents.filter((c: any) => c.status === 'healthy').length
+    const degradedCount = allComponents.filter((c: any) => c.status === 'degraded').length
+    const downCount = allComponents.filter((c: any) => c.status === 'down').length
+
+    const overallStatus = downCount > 0 ? 'degraded' : 
+                         degradedCount > 0 ? 'degraded' : 'healthy'
+
+    const statusColor = overallStatus === 'healthy' ? 0x00ff9f : 
+                       overallStatus === 'degraded' ? 0xfcee0a : 0xff003c
+
+    const statusEmoji = overallStatus === 'healthy' ? '🟢' : 
+                       overallStatus === 'degraded' ? '🟡' : '🔴'
+
+    const embed = {
+      title: `${statusEmoji} System Status Report`,
+      description: `Automated status update for **${server.alliance?.name || `Alliance ${server.allianceId}`}**`,
+      color: statusColor,
+      timestamp: new Date().toISOString(),
+      fields: [
+        {
+          name: '📊 Overall Health',
+          value: `**${healthyCount}** Healthy • **${degradedCount}** Degraded • **${downCount}** Down\n` +
+                 `**${healthyCount}/${allComponents.length}** components operational`,
+          inline: false
+        },
+        {
+          name: '🖥️ Core Infrastructure',
+          value: `**Webapp:** ${getStatusEmoji(systemStatus.webapp.status)} ${systemStatus.webapp.status.toUpperCase()}\n` +
+                 `**Discord Bot:** ${getStatusEmoji(systemStatus.discordBot.status)} ${systemStatus.discordBot.status.toUpperCase()}\n` +
+                 `**Database:** ${getStatusEmoji(systemStatus.database.status)} ${systemStatus.database.status.toUpperCase()}\n` +
+                 `**P&W API:** ${getStatusEmoji(systemStatus.pwApi.status)} ${systemStatus.pwApi.status.toUpperCase()}`,
+          inline: true
+        },
+        {
+          name: '🧩 Module Status',
+          value: `**War:** ${getStatusEmoji(systemStatus.modules.war.status)} ${systemStatus.modules.war.status.toUpperCase()}\n` +
+                 `**Economic:** ${getStatusEmoji(systemStatus.modules.economic.status)} ${systemStatus.modules.economic.status.toUpperCase()}\n` +
+                 `**Membership:** ${getStatusEmoji(systemStatus.modules.membership.status)} ${systemStatus.modules.membership.status.toUpperCase()}\n` +
+                 `**Bot Management:** ${getStatusEmoji(systemStatus.modules.botManagement.status)} ${systemStatus.modules.botManagement.status.toUpperCase()}\n` +
+                 `**Quests:** ${getStatusEmoji(systemStatus.modules.quests.status)} ${systemStatus.modules.quests.status.toUpperCase()}`,
+          inline: true
+        }
+      ],
+      footer: {
+        text: `${requestedBy ? `Requested by ${requestedBy} • ` : ''}Next auto-update: ${new Date(systemStatus.nextUpdate).toLocaleTimeString()}`,
+        icon_url: 'https://cdn.discordapp.com/attachments/123456789/123456789/bot-avatar.png'
+      }
+    }
+
+    await channel.send({ embeds: [embed] })
+    return { success: true, message: 'Status published successfully' }
+  } catch (error) {
+    return { 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Unknown error' 
+    }
+  }
+}
+
+function getStatusEmoji(status: string): string {
+  switch (status) {
+    case 'healthy': return '🟢'
+    case 'degraded': return '🟡'  
+    case 'down': return '🔴'
+    default: return '⚪'
+  }
+}
 
 // API endpoint for webapp communication
 app.post('/api/test-connection', (req: express.Request, res: express.Response) => {
@@ -137,6 +333,12 @@ async function shutdown() {
   logger.info('🔄 Shutting down Discord bot...');
   
   try {
+    // Shutdown automated monitoring service
+    if (monitoringService) {
+      await monitoringService.stop();
+      logger.info('📊 Automated monitoring service stopped');
+    }
+    
     // Shutdown P&W subscription service
     if (pwSubscriptionService) {
       await pwSubscriptionService.shutdown();
@@ -186,6 +388,15 @@ async function start() {
         logger.info('📡 P&W subscription service initialized');
       } catch (error) {
         logger.error('Failed to initialize P&W subscription service:', error);
+      }
+      
+      // Initialize Automated Monitoring Service
+      try {
+        monitoringService = new AutomatedMonitoringService(prisma, logger);
+        await monitoringService.start();
+        logger.info('📊 Automated monitoring service started');
+      } catch (error) {
+        logger.error('Failed to start automated monitoring service:', error);
       }
     });
     

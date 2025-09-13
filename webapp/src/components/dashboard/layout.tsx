@@ -174,6 +174,22 @@ export function DashboardLayout({ children, allianceId, currentModule }: Dashboa
       icon: Shield, 
       description: 'Alliance settings',
       current: currentModuleId === 'admin-alliances'
+    },
+    { 
+      id: 'discord-servers',
+      name: 'Discord Servers', 
+      href: '/admin/discord-servers', 
+      icon: Bot, 
+      description: 'Discord bot configuration',
+      current: currentModuleId === 'discord-servers'
+    },
+    { 
+      id: 'system-status',
+      name: 'System Status', 
+      href: '/admin/system-status', 
+      icon: BarChart3, 
+      description: 'Monitor system health',
+      current: currentModuleId === 'system-status'
     }
   ] : []
 
