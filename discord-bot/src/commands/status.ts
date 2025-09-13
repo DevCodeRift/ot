@@ -12,7 +12,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply()
 
     // Get system status from webapp API
-    const webappUrl = process.env.WEBAPP_URL || 'http://localhost:3000'
+    const webappUrl = process.env.WEBAPP_API_URL || 'http://localhost:3000'
     let systemStatus
     
     try {

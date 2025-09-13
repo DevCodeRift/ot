@@ -90,7 +90,7 @@ export class AutomatedMonitoringService {
 
   private async fetchSystemStatus(allianceId: number) {
     // This would call the same logic as the API endpoint
-    const webappUrl = process.env.WEBAPP_URL || 'http://localhost:3000'
+    const webappUrl = process.env.WEBAPP_API_URL || 'http://localhost:3000'
     
     try {
       const response = await fetch(`${webappUrl}/api/system/status?allianceId=${allianceId}`, {
@@ -208,13 +208,13 @@ export class AutomatedMonitoringService {
           const guild = await client.guilds.fetch(server.id)
           
           // Get configured status channel from database
-          const channelConfig = await this.prisma.$queryRaw<Array<{channel_id: string, is_active: boolean}>>`
-            SELECT channel_id, is_active 
+          const channelConfig = await this.prisma.$queryRaw<Array<{channelId: string, isActive: boolean}>>`
+            SELECT "channelId", "isActive" 
             FROM channel_configs 
-            WHERE server_id = ${server.id}
+            WHERE "serverId" = ${server.id}
               AND module = 'system-monitoring'
-              AND event_type = 'status-updates'
-              AND is_active = true
+              AND "eventType" = 'status-updates'
+              AND "isActive" = true
             LIMIT 1
           `
 
@@ -223,9 +223,9 @@ export class AutomatedMonitoringService {
           if (channelConfig.length > 0) {
             // Use configured channel
             try {
-              statusChannel = await guild.channels.fetch(channelConfig[0].channel_id)
+              statusChannel = await guild.channels.fetch(channelConfig[0].channelId)
             } catch (error) {
-              this.logger.warn(`[MONITORING] Configured channel ${channelConfig[0].channel_id} not found in ${server.name}, falling back to auto-detection`)
+              this.logger.warn(`[MONITORING] Configured channel ${channelConfig[0].channelId} not found in ${server.name}, falling back to auto-detection`)
             }
           }
 
