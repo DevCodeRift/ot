@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { DashboardLayout } from '@/components/dashboard/layout'
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
 import { checkModuleAccess } from '@/lib/module-access'
 import { MembershipModule } from '@/components/modules/membership'
 import { EconomicToolsModule } from '@/components/modules/economic'
@@ -142,9 +143,5 @@ export default async function ModulePage({ params }: ModulePageProps) {
     }
   }
 
-  return (
-    <DashboardLayout allianceId={allianceId}>
-      {renderModuleContent()}
-    </DashboardLayout>
-  )
+  return renderModuleContent()
 }
