@@ -6,6 +6,7 @@ import * as winston from 'winston';
 import { SlashCommand } from './types/discord';
 import { loadCommands } from './utils/commandLoader';
 import { loadEvents } from './utils/eventLoader';
+import { registerCommands } from './utils/commandRegistry';
 import { PWKitSubscriptionService } from './services/pnwkitSubscriptionService';
 import { AutomatedMonitoringService } from './services/automatedMonitoringService';
 
@@ -313,6 +314,9 @@ app.post('/api/test-connection', (req: express.Request, res: express.Response) =
 client.once(Events.ClientReady, async (readyClient: Client<true>) => {
   logger.info(`🤖 Discord bot logged in as ${readyClient.user.tag}!`);
   logger.info(`🔗 Connected to ${readyClient.guilds.cache.size} Discord servers`);
+  
+  // Register commands with Discord API
+  await registerCommands(logger);
   
   // Load commands
   await loadCommands(client, logger);

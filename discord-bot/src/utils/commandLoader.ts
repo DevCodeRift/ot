@@ -3,6 +3,7 @@ import { SlashCommand } from '../types/discord';
 import { Logger } from 'winston';
 import * as fs from 'fs';
 import * as path from 'path';
+import { pathToFileURL } from 'url';
 
 export async function loadCommands(client: Client, logger: Logger): Promise<void> {
   const commandsPath = path.join(__dirname, '..', 'commands');
@@ -26,13 +27,32 @@ export async function loadCommands(client: Client, logger: Logger): Promise<void
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     try {
-      const command = await import(filePath) as { default: SlashCommand };
+      // Use pathToFileURL for Windows compatibility
+      const fileUrl = pathToFileURL(filePath).href;
+      const commandModule = await import(fileUrl);
       
-      if (command.default && command.default.data && typeof command.default.execute === 'function') {
-        (client as any).commands.set(command.default.data.name, command.default);
-        logger.info(`Loaded command: ${command.default.data.name}`);
+      // Handle both default exports and named exports (data, execute)
+      let command: SlashCommand;
+      
+      if (commandModule.default) {
+        // Default export pattern
+        command = commandModule.default;
+      } else if (commandModule.data && commandModule.execute) {
+        // Named exports pattern
+        command = {
+          data: commandModule.data,
+          execute: commandModule.execute
+        };
       } else {
-        logger.warn(`Command file ${file} is missing required properties`);
+        logger.warn(`Command file ${file} is missing required exports (data and execute)`);
+        continue;
+      }
+      
+      if (command.data && typeof command.execute === 'function') {
+        (client as any).commands.set(command.data.name, command);
+        logger.info(`Loaded command: ${command.data.name}`);
+      } else {
+        logger.warn(`Command file ${file} has invalid structure`);
       }
     } catch (error) {
       logger.error(`Error loading command ${file}:`, error);
