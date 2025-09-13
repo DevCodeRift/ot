@@ -75,11 +75,21 @@ app.post('/api/test-connection', (req, res) => {
   
   logger.info('Received test connection request', { serverId, message });
   
+  // Get detailed server information
+  const servers = client.guilds.cache.map((guild: any) => ({
+    id: guild.id,
+    name: guild.name,
+    memberCount: guild.memberCount,
+    icon: guild.iconURL(),
+    joinedAt: guild.joinedAt?.toISOString()
+  }));
+  
   return res.json({
     success: true,
     message: 'Discord bot received your message!',
     botStatus: client.isReady() ? 'online' : 'offline',
     serverCount: client.guilds.cache.size,
+    servers: servers,
     timestamp: new Date().toISOString()
   });
 });

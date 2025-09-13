@@ -80,15 +80,32 @@ export default function BotManagementPage() {
         const result = await response.json()
         
         if (result.success && result.botResponse) {
-          // Create mock connection data based on bot response
-          const activeConnections: BotConnection[] = result.botResponse.serverCount > 0 ? [{
-            serverId: 'bot-connection',
-            serverName: 'Discord Bot',
-            botStatus: result.botResponse.botStatus === 'online' ? 'online' : 'offline',
-            lastSync: new Date(result.botResponse.timestamp).toLocaleString(),
-            memberCount: result.botResponse.serverCount || 0,
-            configuredModules: ['ping', 'test-webapp']
-          }] : []
+          // Create connection data based on actual Discord servers the bot is in
+          const activeConnections: BotConnection[] = []
+          
+          if (result.botResponse.servers && result.botResponse.servers.length > 0) {
+            // Create a connection entry for each Discord server the bot is in
+            result.botResponse.servers.forEach((server: any) => {
+              activeConnections.push({
+                serverId: server.id,
+                serverName: server.name,
+                botStatus: result.botResponse.botStatus === 'online' ? 'online' : 'offline',
+                lastSync: new Date(result.botResponse.timestamp).toLocaleString(),
+                memberCount: server.memberCount || 0,
+                configuredModules: ['ping', 'test-webapp']
+              })
+            })
+          } else if (result.botResponse.serverCount > 0) {
+            // Fallback for older bot responses without server details
+            activeConnections.push({
+              serverId: 'bot-connection',
+              serverName: 'Discord Bot',
+              botStatus: result.botResponse.botStatus === 'online' ? 'online' : 'offline',
+              lastSync: new Date(result.botResponse.timestamp).toLocaleString(),
+              memberCount: result.botResponse.serverCount || 0,
+              configuredModules: ['ping', 'test-webapp']
+            })
+          }
           
           setBotConnections(activeConnections)
         } else {
