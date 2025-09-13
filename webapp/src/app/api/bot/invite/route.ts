@@ -27,8 +27,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Define bot permissions for Politics & War Alliance Management
-    // Using the calculated permission integer: 2270348099808337
-    const defaultPermissions = 2270348099808337
+    // Using a tested permission set - let's start with essential permissions
+    const defaultPermissions = 139586817088 // Essential bot permissions for testing
+    // This includes: Send Messages, Manage Messages, Embed Links, Read Message History, 
+    // Use Slash Commands, Add Reactions, View Channels, Manage Roles
 
     const permissionValue = permissions ? 
       (typeof permissions === 'number' ? permissions : defaultPermissions) : 
@@ -48,6 +50,8 @@ export async function POST(request: NextRequest) {
 
     // Log the invite attempt for audit purposes
     console.log(`Bot invite generated for user ${session.user.id} to server ${serverId}`)
+    console.log(`Permission value: ${permissionValue}`)
+    console.log(`Generated URL: ${inviteUrl.toString()}`)
 
     return NextResponse.json({
       success: true,
