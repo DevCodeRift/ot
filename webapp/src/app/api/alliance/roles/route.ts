@@ -29,12 +29,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!session.user.currentAllianceId) {
+    // Get alliance ID from query parameter or user's current alliance
+    const { searchParams } = new URL(request.url)
+    const queryAllianceId = searchParams.get('allianceId')
+    
+    let allianceId: number
+    if (queryAllianceId) {
+      allianceId = parseInt(queryAllianceId)
+      if (isNaN(allianceId)) {
+        return NextResponse.json({ error: 'Invalid alliance ID' }, { status: 400 })
+      }
+    } else if (session.user.currentAllianceId) {
+      allianceId = session.user.currentAllianceId
+    } else {
       return NextResponse.json({ error: 'User not in an alliance' }, { status: 400 })
     }
 
-    // Check if user is alliance admin
-    const adminCheck = await checkAllianceAdminPermission(session.user.currentAllianceId)
+    // Check if user is alliance admin for the specified alliance
+    const adminCheck = await checkAllianceAdminPermission(allianceId)
     
     if (!adminCheck.hasPermission) {
       return NextResponse.json({ 
@@ -45,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Get all roles for this alliance
     const roles = await prisma.allianceRole.findMany({
       where: {
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         isActive: true
       },
       include: {
@@ -109,12 +121,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!session.user.currentAllianceId) {
+    // Get alliance ID from query parameter or user's current alliance
+    const { searchParams } = new URL(request.url)
+    const queryAllianceId = searchParams.get('allianceId')
+    
+    let allianceId: number
+    if (queryAllianceId) {
+      allianceId = parseInt(queryAllianceId)
+      if (isNaN(allianceId)) {
+        return NextResponse.json({ error: 'Invalid alliance ID' }, { status: 400 })
+      }
+    } else if (session.user.currentAllianceId) {
+      allianceId = session.user.currentAllianceId
+    } else {
       return NextResponse.json({ error: 'User not in an alliance' }, { status: 400 })
     }
 
-    // Check if user is alliance admin
-    const adminCheck = await checkAllianceAdminPermission(session.user.currentAllianceId)
+    // Check if user is alliance admin for the specified alliance
+    const adminCheck = await checkAllianceAdminPermission(allianceId)
     
     if (!adminCheck.hasPermission) {
       return NextResponse.json({ 
@@ -128,7 +152,7 @@ export async function POST(request: NextRequest) {
     // Create the role in the database
     const newRole = await prisma.allianceRole.create({
       data: {
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         name: validatedData.name,
         description: validatedData.description,
         color: validatedData.color || '#00f5ff', // Default cyberpunk cyan

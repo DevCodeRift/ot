@@ -21,7 +21,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!session.user.currentAllianceId) {
+    // Get alliance ID from query parameter or user's current alliance
+    const { searchParams } = new URL(request.url)
+    const queryAllianceId = searchParams.get('allianceId')
+    
+    let allianceId: number
+    if (queryAllianceId) {
+      allianceId = parseInt(queryAllianceId)
+      if (isNaN(allianceId)) {
+        return NextResponse.json({ error: 'Invalid alliance ID' }, { status: 400 })
+      }
+    } else if (session.user.currentAllianceId) {
+      allianceId = session.user.currentAllianceId
+    } else {
       return NextResponse.json({ error: 'User not in an alliance' }, { status: 400 })
     }
 
@@ -41,7 +53,7 @@ export async function POST(request: NextRequest) {
     const role = await prisma.allianceRole.findFirst({
       where: {
         id: validatedData.roleId,
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         isActive: true
       }
     })
@@ -56,7 +68,7 @@ export async function POST(request: NextRequest) {
     const targetUser = await prisma.user.findFirst({
       where: {
         id: validatedData.userId,
-        currentAllianceId: session.user.currentAllianceId
+        currentAllianceId: allianceId
       }
     })
 
@@ -71,7 +83,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId: validatedData.userId,
         roleId: validatedData.roleId,
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         isActive: true,
         OR: [
           { expiresAt: null },
@@ -91,7 +103,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: validatedData.userId,
         roleId: validatedData.roleId,
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         assignedBy: session.user.id,
         assignedAt: new Date(),
         expiresAt: validatedData.expiresAt || null,
@@ -155,7 +167,27 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (!session.user.currentAllianceId) {
+    // Get alliance ID from query parameter or user's current alliance
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const roleId = searchParams.get('roleId')
+    const queryAllianceId = searchParams.get('allianceId')
+
+    if (!userId || !roleId) {
+      return NextResponse.json({ 
+        error: 'User ID and Role ID are required' 
+      }, { status: 400 })
+    }
+    
+    let allianceId: number
+    if (queryAllianceId) {
+      allianceId = parseInt(queryAllianceId)
+      if (isNaN(allianceId)) {
+        return NextResponse.json({ error: 'Invalid alliance ID' }, { status: 400 })
+      }
+    } else if (session.user.currentAllianceId) {
+      allianceId = session.user.currentAllianceId
+    } else {
       return NextResponse.json({ error: 'User not in an alliance' }, { status: 400 })
     }
 
@@ -168,22 +200,12 @@ export async function DELETE(request: NextRequest) {
       }, { status: 403 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const roleId = searchParams.get('roleId')
-
-    if (!userId || !roleId) {
-      return NextResponse.json({ 
-        error: 'User ID and Role ID are required' 
-      }, { status: 400 })
-    }
-
     // Find the active role assignment
     const assignment = await prisma.userAllianceRole.findFirst({
       where: {
         userId: userId,
         roleId: roleId,
-        allianceId: session.user.currentAllianceId,
+        allianceId: allianceId,
         isActive: true,
         OR: [
           { expiresAt: null },

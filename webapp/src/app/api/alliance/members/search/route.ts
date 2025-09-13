@@ -26,14 +26,28 @@ export async function GET(request: NextRequest) {
       }, { status: 403 })
     }
 
+    // Get alliance ID from query parameter or user's current alliance
     const { searchParams } = new URL(request.url)
     const nationName = searchParams.get('nationName')
     const nationId = searchParams.get('nationId')
+    const queryAllianceId = searchParams.get('allianceId')
 
     if (!nationName && !nationId) {
       return NextResponse.json({ 
         error: 'Either nationName or nationId parameter is required' 
       }, { status: 400 })
+    }
+
+    let allianceId: number
+    if (queryAllianceId) {
+      allianceId = parseInt(queryAllianceId)
+      if (isNaN(allianceId)) {
+        return NextResponse.json({ error: 'Invalid alliance ID' }, { status: 400 })
+      }
+    } else if (session.user.currentAllianceId) {
+      allianceId = session.user.currentAllianceId
+    } else {
+      return NextResponse.json({ error: 'User not in an alliance' }, { status: 400 })
     }
 
     interface UserSearchResult {
@@ -53,7 +67,7 @@ export async function GET(request: NextRequest) {
         where: {
           AND: [
             { pwNationId: Number(nationId) },
-            { currentAllianceId: session.user.currentAllianceId }
+            { currentAllianceId: allianceId }
           ]
         },
         select: {
@@ -78,7 +92,7 @@ export async function GET(request: NextRequest) {
                 { discordUsername: { contains: nationName, mode: 'insensitive' } }
               ]
             },
-            { currentAllianceId: session.user.currentAllianceId }
+            { currentAllianceId: allianceId }
           ]
         },
         select: {
