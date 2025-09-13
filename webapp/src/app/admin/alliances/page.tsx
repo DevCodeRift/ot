@@ -41,6 +41,9 @@ export default function AllianceManagementPage() {
   const [submitting, setSubmitting] = useState(false)
   const [apiKeyInputs, setApiKeyInputs] = useState<{ [key: number]: string }>({})
   const [savingApiKey, setSavingApiKey] = useState<{ [key: number]: boolean }>({})
+  const [showAddAdmin, setShowAddAdmin] = useState<{ [key: number]: boolean }>({})
+  const [newAdminInputs, setNewAdminInputs] = useState<{ [key: number]: { discordId: string; role: string } }>({})
+  const [managingAdmin, setManagingAdmin] = useState<{ [key: string]: boolean }>({})
 
   useEffect(() => {
     if (status === 'loading') return
@@ -162,6 +165,69 @@ export default function AllianceManagementPage() {
       setError(err instanceof Error ? err.message : 'Failed to remove API key')
     } finally {
       setSavingApiKey(prev => ({ ...prev, [allianceId]: false }))
+    }
+  }
+
+  const addAllianceAdmin = async (allianceId: number) => {
+    const adminData = newAdminInputs[allianceId]
+    if (!adminData?.discordId?.trim()) {
+      setError('Discord ID is required')
+      return
+    }
+
+    setManagingAdmin(prev => ({ ...prev, [`add-${allianceId}`]: true }))
+    setError('')
+    
+    try {
+      const response = await fetch(`/api/admin/alliances/${allianceId}/admins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discordId: adminData.discordId.trim(),
+          role: adminData.role || 'admin'
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to add admin')
+      }
+
+      await fetchAlliances()
+      setNewAdminInputs(prev => ({ ...prev, [allianceId]: { discordId: '', role: 'admin' } }))
+      setShowAddAdmin(prev => ({ ...prev, [allianceId]: false }))
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add admin')
+    } finally {
+      setManagingAdmin(prev => ({ ...prev, [`add-${allianceId}`]: false }))
+    }
+  }
+
+  const removeAllianceAdmin = async (allianceId: number, adminId: string) => {
+    if (!confirm('Are you sure you want to remove this administrator?')) {
+      return
+    }
+
+    setManagingAdmin(prev => ({ ...prev, [`remove-${adminId}`]: true }))
+    setError('')
+    
+    try {
+      const response = await fetch(`/api/admin/alliances/${allianceId}/admins/${adminId}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to remove admin')
+      }
+
+      await fetchAlliances()
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove admin')
+    } finally {
+      setManagingAdmin(prev => ({ ...prev, [`remove-${adminId}`]: false }))
     }
   }
 
@@ -313,9 +379,77 @@ export default function AllianceManagementPage() {
 
               {/* Alliance Admins */}
               <div className="mb-6">
-                <h4 className="text-lg font-semibold text-cp-text-primary mb-3">
-                  Alliance Administrators
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-lg font-semibold text-cp-text-primary">
+                    Alliance Administrators
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setShowAddAdmin(prev => ({ ...prev, [alliance.id]: !prev[alliance.id] }))
+                      if (!newAdminInputs[alliance.id]) {
+                        setNewAdminInputs(prev => ({ ...prev, [alliance.id]: { discordId: '', role: 'admin' } }))
+                      }
+                    }}
+                    className="cp-button-secondary text-sm"
+                  >
+                    {showAddAdmin[alliance.id] ? 'Cancel' : 'Add Admin'}
+                  </button>
+                </div>
+
+                {showAddAdmin[alliance.id] && (
+                  <div className="mb-4 p-4 bg-cp-bg-tertiary rounded-lg border border-cp-border">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-cp-text-primary mb-1">
+                          Discord ID
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Enter Discord ID..."
+                          value={newAdminInputs[alliance.id]?.discordId || ''}
+                          onChange={(e) => setNewAdminInputs(prev => ({
+                            ...prev,
+                            [alliance.id]: { ...prev[alliance.id], discordId: e.target.value }
+                          }))}
+                          className="cp-input w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-cp-text-primary mb-1">
+                          Role
+                        </label>
+                        <select
+                          value={newAdminInputs[alliance.id]?.role || 'admin'}
+                          onChange={(e) => setNewAdminInputs(prev => ({
+                            ...prev,
+                            [alliance.id]: { ...prev[alliance.id], role: e.target.value }
+                          }))}
+                          className="cp-input w-full"
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="moderator">Moderator</option>
+                          <option value="manager">Manager</option>
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => addAllianceAdmin(alliance.id)}
+                          disabled={managingAdmin[`add-${alliance.id}`] || !newAdminInputs[alliance.id]?.discordId?.trim()}
+                          className="cp-button-primary"
+                        >
+                          {managingAdmin[`add-${alliance.id}`] ? 'Adding...' : 'Add Admin'}
+                        </button>
+                        <button
+                          onClick={() => setShowAddAdmin(prev => ({ ...prev, [alliance.id]: false }))}
+                          className="cp-button-secondary"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {alliance.admins.length === 0 ? (
                   <p className="text-cp-text-secondary">No administrators assigned</p>
                 ) : (
@@ -330,9 +464,18 @@ export default function AllianceManagementPage() {
                             Discord ID: {admin.discordId} • Role: {admin.role}
                           </p>
                         </div>
-                        <span className="text-cp-text-muted text-sm">
-                          Added: {new Date(admin.addedAt).toLocaleDateString()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-cp-text-muted text-sm">
+                            Added: {new Date(admin.addedAt).toLocaleDateString()}
+                          </span>
+                          <button
+                            onClick={() => removeAllianceAdmin(alliance.id, admin.id)}
+                            disabled={managingAdmin[`remove-${admin.id}`]}
+                            className="cp-button-secondary text-cp-red border-cp-red hover:bg-cp-red/10 text-sm px-3 py-1"
+                          >
+                            {managingAdmin[`remove-${admin.id}`] ? 'Removing...' : 'Remove'}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
