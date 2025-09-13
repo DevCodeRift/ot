@@ -10,7 +10,9 @@ import {
   Trash2, 
   Edit,
   UserPlus,
-  UserMinus
+  UserMinus,
+  Search,
+  X
 } from 'lucide-react'
 
 interface Role {
@@ -74,6 +76,13 @@ export default function RoleManagementPage() {
   const [error, setError] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+
+  // Role assignment management state
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [isAssigning, setIsAssigning] = useState(false)
 
   const [newRole, setNewRole] = useState<CreateRoleData>({
     name: '',
@@ -173,6 +182,112 @@ export default function RoleManagementPage() {
     return Object.values(permissions).filter(Boolean).length + role.modulePermissions.length
   }
 
+  // Role assignment functions
+  const handleManageRole = (role: Role) => {
+    setSelectedRole(role)
+    setShowAssignModal(true)
+    setSearchQuery('')
+    setSearchResults([])
+  }
+
+  const searchUsers = async () => {
+    if (searchQuery.length < 2) {
+      setSearchResults([])
+      return
+    }
+
+    try {
+      // Search by nation ID (if numeric) or nation name
+      const isNationId = !isNaN(Number(searchQuery))
+      const searchParam = isNationId ? `nationId=${searchQuery}` : `nationName=${encodeURIComponent(searchQuery)}`
+      
+      const response = await fetch(`/api/alliance/users/search?${searchParam}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        setSearchResults(data.users || [])
+      }
+    } catch (err) {
+      console.error('Search failed:', err)
+    }
+  }
+
+  const assignRole = async (userId: string) => {
+    if (!selectedRole) return
+
+    try {
+      setIsAssigning(true)
+      setError('')
+
+      const response = await fetch('/api/alliance/roles/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          roleId: selectedRole.id
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to assign role')
+      }
+
+      // Refresh roles to update assigned users count
+      await fetchRoles()
+      
+      // Clear search
+      setSearchQuery('')
+      setSearchResults([])
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to assign role')
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  const revokeRole = async (userId: string) => {
+    if (!selectedRole) return
+
+    try {
+      setError('')
+
+      const response = await fetch('/api/alliance/roles/assign', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          roleId: selectedRole.id
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to revoke role')
+      }
+
+      // Refresh roles to update assigned users count
+      await fetchRoles()
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke role')
+    }
+  }
+
+  // Search effect
+  useEffect(() => {
+    if (searchQuery.length >= 2) {
+      searchUsers()
+    } else {
+      setSearchResults([])
+    }
+  }, [searchQuery])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-cp-bg-primary p-6">
@@ -270,7 +385,10 @@ export default function RoleManagementPage() {
                   <span className="text-cp-text-muted text-xs">
                     Created {new Date(role.createdAt).toLocaleDateString()}
                   </span>
-                  <button className="text-cp-cyan hover:text-cp-cyan/80 text-sm flex items-center">
+                  <button 
+                    onClick={() => handleManageRole(role)}
+                    className="text-cp-cyan hover:text-cp-cyan/80 text-sm flex items-center transition-colors"
+                  >
                     <Users className="w-3 h-3 mr-1" />
                     Manage
                   </button>
@@ -437,6 +555,118 @@ export default function RoleManagementPage() {
                   >
                     {isCreating ? 'Creating...' : 'Create Role'}
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Role Assignment Modal */}
+        {showAssignModal && selectedRole && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="cp-card max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-cyberpunk text-cp-text-primary">
+                      Manage Role: {selectedRole.name}
+                    </h2>
+                    <p className="text-cp-text-secondary text-sm">
+                      Assign or revoke this role from alliance members
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAssignModal(false)}
+                    className="text-cp-text-muted hover:text-cp-text-primary"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {error && (
+                  <div className="cp-card p-4 border-cp-red bg-cp-red/10 mb-4">
+                    <p className="text-cp-red">{error}</p>
+                  </div>
+                )}
+
+                {/* Search and Assign Section */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium text-cp-text-primary mb-3">
+                      Assign Role to Member
+                    </h3>
+                    
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-cp-text-muted" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by nation name or ID..."
+                        className="w-full pl-10 pr-4 py-3 bg-cp-bg-secondary border border-cp-border rounded text-cp-text-primary focus:border-cp-cyan focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Search Results */}
+                    {searchResults.length > 0 && (
+                      <div className="mt-2 bg-cp-bg-secondary border border-cp-border rounded max-h-48 overflow-y-auto">
+                        {searchResults.map(user => (
+                          <div key={user.id} className="flex items-center justify-between p-3 border-b border-cp-border last:border-b-0">
+                            <div>
+                              <div className="text-cp-text-primary font-medium">
+                                {user.pwNationName || user.name}
+                              </div>
+                              {user.pwNationId && (
+                                <div className="text-cp-text-muted text-sm">
+                                  Nation ID: {user.pwNationId}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => assignRole(user.id)}
+                              disabled={isAssigning}
+                              className="cp-button-primary px-3 py-1 text-sm disabled:opacity-50"
+                            >
+                              {isAssigning ? 'Assigning...' : 'Assign'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Current Assignments */}
+                  <div>
+                    <h3 className="text-lg font-medium text-cp-text-primary mb-3">
+                      Current Assignments ({selectedRole.assignedUsers.length})
+                    </h3>
+                    
+                    {selectedRole.assignedUsers.length === 0 ? (
+                      <p className="text-cp-text-muted">No users assigned to this role yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedRole.assignedUsers.map(user => (
+                          <div key={user.id} className="flex items-center justify-between p-3 bg-cp-bg-tertiary rounded">
+                            <div>
+                              <div className="text-cp-text-primary font-medium">
+                                {user.pwNationName || user.name}
+                              </div>
+                              <div className="text-cp-text-muted text-sm">
+                                Assigned: {new Date(user.assignedAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => revokeRole(user.id)}
+                              className="text-cp-red hover:text-cp-red/80 p-2"
+                              title="Revoke role"
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

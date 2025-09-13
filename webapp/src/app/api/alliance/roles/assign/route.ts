@@ -37,17 +37,97 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = assignRoleSchema.parse(body)
 
-    // Return mock response until database is set up
-    return NextResponse.json({
-      success: true,
-      message: 'Role assignment will be available once database tables are created',
-      assignment: {
-        id: 'mock-assignment-id',
+    // Verify the role exists and belongs to this alliance
+    const role = await prisma.allianceRole.findFirst({
+      where: {
+        id: validatedData.roleId,
+        allianceId: session.user.currentAllianceId,
+        isActive: true
+      }
+    })
+
+    if (!role) {
+      return NextResponse.json({ 
+        error: 'Role not found or does not belong to your alliance' 
+      }, { status: 404 })
+    }
+
+    // Verify the user exists and belongs to this alliance
+    const targetUser = await prisma.user.findFirst({
+      where: {
+        id: validatedData.userId,
+        currentAllianceId: session.user.currentAllianceId
+      }
+    })
+
+    if (!targetUser) {
+      return NextResponse.json({ 
+        error: 'User not found or does not belong to your alliance' 
+      }, { status: 404 })
+    }
+
+    // Check if user already has this role
+    const existingAssignment = await prisma.userAllianceRole.findFirst({
+      where: {
         userId: validatedData.userId,
         roleId: validatedData.roleId,
+        allianceId: session.user.currentAllianceId,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } }
+        ]
+      }
+    })
+
+    if (existingAssignment) {
+      return NextResponse.json({ 
+        error: 'User already has this role assigned' 
+      }, { status: 400 })
+    }
+
+    // Create the role assignment
+    const assignment = await prisma.userAllianceRole.create({
+      data: {
+        userId: validatedData.userId,
+        roleId: validatedData.roleId,
+        allianceId: session.user.currentAllianceId,
         assignedBy: session.user.id,
         assignedAt: new Date(),
-        expiresAt: validatedData.expiresAt || null
+        expiresAt: validatedData.expiresAt || null,
+        isActive: true
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            discordUsername: true,
+            pwNationName: true
+          }
+        },
+        role: {
+          select: {
+            id: true,
+            name: true,
+            color: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Role assigned successfully',
+      assignment: {
+        id: assignment.id,
+        userId: assignment.userId,
+        roleId: assignment.roleId,
+        assignedBy: assignment.assignedBy,
+        assignedAt: assignment.assignedAt,
+        expiresAt: assignment.expiresAt,
+        user: assignment.user,
+        role: assignment.role
       }
     })
 
@@ -98,10 +178,62 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Return mock response until database is set up
+    // Find the active role assignment
+    const assignment = await prisma.userAllianceRole.findFirst({
+      where: {
+        userId: userId,
+        roleId: roleId,
+        allianceId: session.user.currentAllianceId,
+        isActive: true,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } }
+        ]
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            discordUsername: true,
+            pwNationName: true
+          }
+        },
+        role: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    })
+
+    if (!assignment) {
+      return NextResponse.json({ 
+        error: 'Role assignment not found or already inactive' 
+      }, { status: 404 })
+    }
+
+    // Deactivate the role assignment
+    await prisma.userAllianceRole.update({
+      where: {
+        id: assignment.id
+      },
+      data: {
+        isActive: false
+      }
+    })
+
     return NextResponse.json({
       success: true,
-      message: 'Role removal will be available once database tables are created'
+      message: `Role "${assignment.role.name}" removed from user "${assignment.user.name || assignment.user.discordUsername || assignment.user.pwNationName || 'Unknown'}" successfully`,
+      removedAssignment: {
+        id: assignment.id,
+        userId: assignment.userId,
+        roleId: assignment.roleId,
+        user: assignment.user,
+        role: assignment.role
+      }
     })
 
   } catch (error) {
