@@ -104,7 +104,7 @@ export function MobileNavigation({ currentModule, onModuleChange, className = ''
           <div className="
             w-80 bg-cp-bg-secondary border-l border-cp-border
             flex flex-col h-full overflow-hidden
-            animate-slide-in-right
+            animate-in slide-in-from-right duration-300
           ">
             {/* Header */}
             <div className="p-4 border-b border-cp-border flex items-center justify-between">
@@ -307,22 +307,6 @@ export function MobileNavigation({ currentModule, onModuleChange, className = ''
           </button>
         </div>
       </div>
-
-      {/* Add slide animation styles */}
-      <style jsx>{`
-        @keyframes slide-in-right {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        
-        .animate-slide-in-right {
-          animation: slide-in-right 0.3s ease-out;
-        }
-      `}</style>
     </>
   )
 }
