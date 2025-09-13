@@ -191,6 +191,43 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Create corresponding Discord role via bot
+    let discordRoleId = null
+    try {
+      const discordCreateResult = await fetch(`${process.env.NEXTAUTH_URL}/api/bot/create-discord-role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
+        },
+        body: JSON.stringify({
+          allianceId: allianceId,
+          roleId: newRole.id,
+          roleName: newRole.name,
+          roleDescription: newRole.description,
+          roleColor: newRole.color
+        })
+      })
+
+      if (discordCreateResult.ok) {
+        const discordResult = await discordCreateResult.json()
+        discordRoleId = discordResult.discordRoleId
+        
+        // Update the alliance role with the Discord role ID
+        await prisma.allianceRole.update({
+          where: { id: newRole.id },
+          data: { discordRoleId: discordRoleId }
+        })
+        
+        console.log(`Successfully created Discord role: ${newRole.name} (Discord ID: ${discordRoleId})`)
+      } else {
+        console.warn(`Failed to create Discord role for: ${newRole.name}`)
+      }
+    } catch (discordError) {
+      console.error('Discord role creation error:', discordError)
+      // Don't fail the alliance role creation if Discord fails
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Role created successfully',
@@ -209,6 +246,7 @@ export async function POST(request: NextRequest) {
           canManageRecruitment: newRole.canManageRecruitment
         },
         displayOrder: newRole.displayOrder,
+        discordRoleId: discordRoleId,
         createdAt: newRole.createdAt,
         assignedUsers: []
       }

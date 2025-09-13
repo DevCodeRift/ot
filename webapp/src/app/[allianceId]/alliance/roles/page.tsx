@@ -13,7 +13,8 @@ import {
   UserPlus,
   UserMinus,
   Search,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react'
 
 interface Role {
@@ -21,6 +22,7 @@ interface Role {
   name: string
   description?: string
   color?: string
+  discordRoleId?: string
   modulePermissions: string[]
   permissions: {
     canAssignRoles: boolean
@@ -80,6 +82,8 @@ export default function RoleManagementPage() {
   const [error, setError] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncResults, setSyncResults] = useState<any>(null)
 
   // Role assignment management state
   const [showAssignModal, setShowAssignModal] = useState(false)
@@ -179,6 +183,40 @@ export default function RoleManagementPage() {
         ? prev.modulePermissions.filter(id => id !== moduleId)
         : [...prev.modulePermissions, moduleId]
     }))
+  }
+
+  const syncExistingRoles = async () => {
+    try {
+      setIsSyncing(true)
+      setError('')
+      setSyncResults(null)
+
+      const response = await fetch(`/api/alliance/roles/sync-existing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          allianceId: parseInt(allianceId)
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to sync roles')
+      }
+
+      const data = await response.json()
+      setSyncResults(data)
+      
+      // Refresh roles to show updated Discord IDs
+      await fetchRoles()
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sync existing roles')
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   const getPermissionCount = (role: Role) => {
@@ -312,19 +350,73 @@ export default function RoleManagementPage() {
             </div>
           </div>
           
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="cp-button-primary flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Role
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={syncExistingRoles}
+              disabled={isSyncing}
+              className="cp-button-secondary flex items-center"
+              title="Sync existing roles to Discord"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? 'Syncing...' : 'Sync to Discord'}
+            </button>
+            
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="cp-button-primary flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Role
+            </button>
+          </div>
         </div>
       </div>
 
       {error && (
         <div className="cp-card p-4 border-cp-red bg-cp-red/10 mb-6">
           <p className="text-cp-red">{error}</p>
+        </div>
+      )}
+
+      {syncResults && (
+        <div className="cp-card p-4 border-cp-green bg-cp-green/10 mb-6">
+          <h3 className="text-cp-green font-cyberpunk mb-2">Discord Sync Results</h3>
+          <p className="text-cp-text-primary mb-3">{syncResults.message}</p>
+          
+          {syncResults.results && syncResults.results.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-cp-text-secondary text-sm">Details:</p>
+              {syncResults.results.map((result: any, index: number) => (
+                <div 
+                  key={index}
+                  className={`flex items-center justify-between text-sm p-2 rounded ${
+                    result.status === 'success' 
+                      ? 'bg-cp-green/20 text-cp-green' 
+                      : 'bg-cp-red/20 text-cp-red'
+                  }`}
+                >
+                  <span>
+                    {result.roleName}
+                    {result.status === 'success' && result.discordRoleId && (
+                      <span className="text-cp-text-muted ml-2">
+                        (Discord ID: {result.discordRoleId})
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-medium">
+                    {result.status === 'success' ? '✅ Synced' : '❌ Failed'}
+                  </span>
+                </div>
+              ))}
+              
+              <button
+                onClick={() => setSyncResults(null)}
+                className="text-cp-text-muted hover:text-cp-text-primary text-sm mt-2"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -339,9 +431,22 @@ export default function RoleManagementPage() {
                   style={{ backgroundColor: role.color || '#00f5ff' }}
                 />
                 <div>
-                  <h3 className="text-lg font-cyberpunk text-cp-text-primary">
-                    {role.name}
-                  </h3>
+                  <div className="flex items-center">
+                    <h3 className="text-lg font-cyberpunk text-cp-text-primary">
+                      {role.name}
+                    </h3>
+                    {role.discordRoleId ? (
+                      <div 
+                        className="ml-2 w-2 h-2 rounded-full bg-cp-green"
+                        title={`Synced to Discord (ID: ${role.discordRoleId})`}
+                      />
+                    ) : (
+                      <div 
+                        className="ml-2 w-2 h-2 rounded-full bg-cp-yellow"
+                        title="Not synced to Discord"
+                      />
+                    )}
+                  </div>
                   {role.description && (
                     <p className="text-cp-text-secondary text-sm">
                       {role.description}

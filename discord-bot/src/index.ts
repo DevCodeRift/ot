@@ -51,6 +51,12 @@ client.commands = new Collection<string, SlashCommand>();
 const app = express();
 app.use(express.json());
 
+// Import route handlers
+import rolesRouter from './routes/roles';
+
+// Use route handlers
+app.use('/api', rolesRouter);
+
 // Health check endpoint
 app.get('/health', (req: express.Request, res: express.Response) => {
   res.json({ 
