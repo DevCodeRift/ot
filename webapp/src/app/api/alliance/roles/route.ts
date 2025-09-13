@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
         name: role.name,
         description: role.description,
         color: role.color,
+        discordRoleId: role.discordRoleId,
         modulePermissions: role.modulePermissions,
         permissions: {
           canAssignRoles: role.canAssignRoles,

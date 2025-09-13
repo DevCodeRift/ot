@@ -69,10 +69,8 @@ model User {
   createdQuests              Quest[]                @relation("QuestCreator")
   createdTaxBrackets         TaxBracket[]           @relation("TaxBracketCreator")
   modifiedTaxBrackets        TaxBracket[]           @relation("TaxBracketModifier")
+  allianceRoles              UserAllianceRole[]
   nation                     Nation?                @relation(fields: [pwNationId], references: [id])
-
-  // Alliance Role Management Relations
-  allianceRoles UserAllianceRole[]
 
   @@map("users")
 }
@@ -117,6 +115,7 @@ model Alliance {
   allianceAdmins        AllianceAdmin[]
   apiKey                AllianceApiKey?
   allianceModules       AllianceModule[]
+  allianceRoles         AllianceRole[]
   bankRecords           Bankrec[]              @relation("AllianceBankRecords")
   discordServers        DiscordServer[]
   memberHoldings        MemberHolding[]
@@ -128,15 +127,12 @@ model Alliance {
   questNotifications    QuestNotification[]
   questProgress         QuestProgress[]
   quests                Quest[]
+  roleAuditLogs         RoleAuditLog[]
   taxBrackets           TaxBracket[]
   treaties              Treaty[]               @relation("Alliance1Treaties")
   receivedTreaties      Treaty[]               @relation("Alliance2Treaties")
+  userAllianceRoles     UserAllianceRole[]
   wars                  War[]                  @relation("AllianceWars")
-
-  // Alliance Role Management Relations
-  allianceRoles     AllianceRole[]
-  userAllianceRoles UserAllianceRole[]
-  roleAuditLogs     RoleAuditLog[]
 
   @@map("alliances")
 }
@@ -655,83 +651,62 @@ model QuestNotification {
   @@map("quest_notifications")
 }
 
-// Alliance Role Management System
 model AllianceRole {
-  id          String  @id @default(cuid())
-  allianceId  Int // Alliance this role belongs to
-  name        String // Role name (e.g., "Role Manager", "Quest Manager")
-  description String? // Optional description of the role
-  color       String? // Hex color for UI display
+  id                   String             @id @default(cuid())
+  allianceId           Int
+  name                 String
+  description          String?
+  color                String?
+  modulePermissions    String[]
+  canAssignRoles       Boolean            @default(false)
+  canCreateQuests      Boolean            @default(false)
+  canManageMembers     Boolean            @default(false)
+  canViewWarData       Boolean            @default(false)
+  canManageEconomics   Boolean            @default(false)
+  canManageRecruitment Boolean            @default(false)
+  createdBy            String
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  isActive             Boolean            @default(true)
+  displayOrder         Int                @default(0)
+  discordRoleId        String?
+  alliance             Alliance           @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  userRoles            UserAllianceRole[]
 
-  // Discord Integration
-  discordRoleId String? // Discord role ID for sync
-
-  // Module Permissions - which modules this role can access
-  modulePermissions String[] // Array of module IDs (membership, war, quests, etc.)
-
-  // Specific Permissions
-  canAssignRoles       Boolean @default(false) // Can assign roles to users
-  canCreateQuests      Boolean @default(false) // Can create and manage quests
-  canManageMembers     Boolean @default(false) // Can manage alliance members
-  canViewWarData       Boolean @default(false) // Can view war-related data
-  canManageEconomics   Boolean @default(false) // Can manage economic tools
-  canManageRecruitment Boolean @default(false) // Can manage recruitment
-
-  // Role Management
-  createdBy    String // User ID who created this role
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  isActive     Boolean  @default(true)
-  displayOrder Int      @default(0) // Order for UI display
-
-  alliance  Alliance           @relation(fields: [allianceId], references: [id], onDelete: Cascade)
-  userRoles UserAllianceRole[]
-
-  @@unique([allianceId, name]) // Unique role names per alliance
+  @@unique([allianceId, name])
   @@map("alliance_roles")
 }
 
 model UserAllianceRole {
-  id         String @id @default(cuid())
-  userId     String // User who has this role
-  allianceId Int // Alliance context
-  roleId     String // Role being assigned
+  id         String       @id @default(cuid())
+  userId     String
+  allianceId Int
+  roleId     String
+  assignedBy String
+  assignedAt DateTime     @default(now())
+  expiresAt  DateTime?
+  isActive   Boolean      @default(true)
+  alliance   Alliance     @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  role       AllianceRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Assignment Tracking
-  assignedBy String // User ID who assigned this role
-  assignedAt DateTime  @default(now())
-  expiresAt  DateTime? // Optional expiration date
-  isActive   Boolean   @default(true)
-
-  // Relations
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  alliance Alliance     @relation(fields: [allianceId], references: [id], onDelete: Cascade)
-  role     AllianceRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, allianceId, roleId]) // User can only have each role once per alliance
+  @@unique([userId, allianceId, roleId])
   @@map("user_alliance_roles")
 }
 
-// Role permission audit log for tracking changes
 model RoleAuditLog {
-  id         String @id @default(cuid())
-  allianceId Int // Alliance context
-  actionType String // role_created, role_updated, role_assigned, role_revoked
-
-  // Action Details
-  performedBy  String // User ID who performed the action
-  targetUserId String? // User affected (for assignments/revocations)
-  roleId       String? // Role affected
-  roleName     String? // Role name for historical reference
-
-  // Change Details
-  oldPermissions Json? // Previous permissions (for updates)
-  newPermissions Json? // New permissions (for updates)
-  changeReason   String? // Optional reason for the change
-
-  createdAt DateTime @default(now())
-
-  alliance Alliance @relation(fields: [allianceId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  allianceId     Int
+  actionType     String
+  performedBy    String
+  targetUserId   String?
+  roleId         String?
+  roleName       String?
+  oldPermissions Json?
+  newPermissions Json?
+  changeReason   String?
+  createdAt      DateTime @default(now())
+  alliance       Alliance @relation(fields: [allianceId], references: [id], onDelete: Cascade)
 
   @@map("role_audit_logs")
 }
