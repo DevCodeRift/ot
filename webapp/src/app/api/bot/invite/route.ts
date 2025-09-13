@@ -27,10 +27,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Define bot permissions for Politics & War Alliance Management
-    // Using a tested permission set - let's start with essential permissions
-    const defaultPermissions = 139586817088 // Essential bot permissions for testing
-    // This includes: Send Messages, Manage Messages, Embed Links, Read Message History, 
-    // Use Slash Commands, Add Reactions, View Channels, Manage Roles
+    // Using a simple, known-working permission set for testing
+    const defaultPermissions = 2048 + 8192 + 16384 + 65536 // Send Messages + Manage Messages + Embed Links + Read Message History
+    // This should show: Send Messages, Manage Messages, Embed Links, Read Message History
 
     const permissionValue = permissions ? 
       (typeof permissions === 'number' ? permissions : defaultPermissions) : 
