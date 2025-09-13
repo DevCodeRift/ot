@@ -7,6 +7,13 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
+    console.log('Discord servers API - Session check:', {
+      hasSession: !!session,
+      hasUser: !!session?.user?.id,
+      hasAccessToken: !!session?.accessToken,
+      userId: session?.user?.id
+    })
+    
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -15,6 +22,7 @@ export async function GET(request: NextRequest) {
     const discordToken = session.accessToken
 
     if (!discordToken) {
+      console.log('No Discord access token in session')
       return NextResponse.json({ 
         error: 'Discord access token not available',
         message: 'Please re-authenticate with Discord'
@@ -22,6 +30,8 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+      console.log('Attempting to fetch Discord guilds...')
+      
       // Fetch user's Discord guilds
       const discordResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
         headers: {
@@ -30,11 +40,16 @@ export async function GET(request: NextRequest) {
         }
       })
 
+      console.log('Discord API response status:', discordResponse.status)
+
       if (!discordResponse.ok) {
-        throw new Error(`Discord API returned ${discordResponse.status}`)
+        const errorText = await discordResponse.text()
+        console.error('Discord API error response:', errorText)
+        throw new Error(`Discord API returned ${discordResponse.status}: ${errorText}`)
       }
 
       const guilds = await discordResponse.json()
+      console.log('Fetched guilds count:', guilds.length)
 
       // Filter guilds where user has administrator permissions (permission & 0x8)
       const adminGuilds = guilds.filter((guild: any) => {
@@ -77,31 +92,11 @@ export async function GET(request: NextRequest) {
     } catch (discordError) {
       console.error('Discord API error:', discordError)
       
-      // Return mock data for development
-      const mockServers = [
-        {
-          id: '123456789012345678',
-          name: 'Rose Alliance Discord',
-          icon: null,
-          owner: true,
-          permissions: '8',
-          botInvited: false
-        },
-        {
-          id: '876543210987654321',
-          name: 'Alliance War Room',
-          icon: null,
-          owner: false,
-          permissions: '8',
-          botInvited: false
-        }
-      ]
-
       return NextResponse.json({
-        success: true,
-        servers: mockServers,
-        note: 'Mock data - Discord API not available'
-      })
+        success: false,
+        error: 'Failed to fetch Discord servers',
+        details: discordError instanceof Error ? discordError.message : 'Unknown error'
+      }, { status: 400 })
     }
 
   } catch (error) {
