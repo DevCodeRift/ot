@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       return sum + (permissionMap[perm] || 0)
     }, 0)
 
-    // Generate Discord OAuth2 authorize URL
+    // Generate Discord OAuth2 authorize URL for bot invite
     const scope = 'bot applications.commands'
     const inviteUrl = new URL('https://discord.com/api/oauth2/authorize')
     
@@ -69,14 +69,8 @@ export async function POST(request: NextRequest) {
     inviteUrl.searchParams.set('scope', scope)
     inviteUrl.searchParams.set('guild_id', serverId)
     
-    // Optional: Add redirect URI for post-invite handling
-    const redirectUri = process.env.NEXTAUTH_URL 
-      ? `${process.env.NEXTAUTH_URL}/bot/invite-success`
-      : undefined
-    
-    if (redirectUri) {
-      inviteUrl.searchParams.set('redirect_uri', redirectUri)
-    }
+    // Bot invites don't typically use redirect URIs
+    // The user will be redirected back to Discord after the invite
 
     // Log the invite attempt for audit purposes
     console.log(`Bot invite generated for user ${session.user.id} to server ${serverId}`)
