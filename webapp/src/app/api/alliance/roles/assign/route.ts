@@ -115,18 +115,48 @@ export async function POST(request: NextRequest) {
             id: true,
             name: true,
             discordUsername: true,
-            pwNationName: true
+            pwNationName: true,
+            discordId: true
           }
         },
         role: {
           select: {
             id: true,
             name: true,
-            color: true
+            color: true,
+            discordRoleId: true
           }
         }
       }
     })
+
+    // Sync to Discord if both user has Discord ID and role has Discord role ID
+    if (assignment.user.discordId && assignment.role.discordRoleId) {
+      try {
+        const discordSyncResult = await fetch(`${process.env.NEXTAUTH_URL}/api/bot/discord-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
+          },
+          body: JSON.stringify({
+            action: 'assign',
+            discordUserId: assignment.user.discordId,
+            discordRoleId: assignment.role.discordRoleId,
+            allianceId: allianceId
+          })
+        })
+
+        if (discordSyncResult.ok) {
+          console.log(`Successfully synced role assignment to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
+        } else {
+          console.warn(`Failed to sync role assignment to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
+        }
+      } catch (discordError) {
+        console.error('Discord sync error during role assignment:', discordError)
+        // Don't fail the role assignment if Discord sync fails
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -218,13 +248,15 @@ export async function DELETE(request: NextRequest) {
             id: true,
             name: true,
             discordUsername: true,
-            pwNationName: true
+            pwNationName: true,
+            discordId: true
           }
         },
         role: {
           select: {
             id: true,
-            name: true
+            name: true,
+            discordRoleId: true
           }
         }
       }
@@ -245,6 +277,34 @@ export async function DELETE(request: NextRequest) {
         isActive: false
       }
     })
+
+    // Sync to Discord if both user has Discord ID and role has Discord role ID
+    if (assignment.user.discordId && assignment.role.discordRoleId) {
+      try {
+        const discordSyncResult = await fetch(`${process.env.NEXTAUTH_URL}/api/bot/discord-sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
+          },
+          body: JSON.stringify({
+            action: 'remove',
+            discordUserId: assignment.user.discordId,
+            discordRoleId: assignment.role.discordRoleId,
+            allianceId: allianceId
+          })
+        })
+
+        if (discordSyncResult.ok) {
+          console.log(`Successfully synced role removal to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
+        } else {
+          console.warn(`Failed to sync role removal to Discord: ${assignment.user.discordUsername} -> ${assignment.role.name}`)
+        }
+      } catch (discordError) {
+        console.error('Discord sync error during role removal:', discordError)
+        // Don't fail the role removal if Discord sync fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

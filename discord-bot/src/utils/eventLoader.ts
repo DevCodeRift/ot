@@ -1,7 +1,7 @@
 import { Client } from 'discord.js';
 import { Logger } from 'winston';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export async function loadEvents(client: Client, logger: Logger): Promise<void> {
   const eventsPath = path.join(__dirname, '..', 'events');

@@ -1,11 +1,11 @@
 import { Client, GatewayIntentBits, Collection, Events } from 'discord.js';
 import { PrismaClient } from '@prisma/client';
-import express from 'express';
-import dotenv from 'dotenv';
-import winston from 'winston';
-import { SlashCommand } from '@/types/discord';
-import { loadCommands } from '@/utils/commandLoader';
-import { loadEvents } from '@/utils/eventLoader';
+import express = require('express');
+import * as dotenv from 'dotenv';
+import * as winston from 'winston';
+import { SlashCommand } from './types/discord';
+import { loadCommands } from './utils/commandLoader';
+import { loadEvents } from './utils/eventLoader';
 
 // Load environment variables
 dotenv.config();
@@ -52,7 +52,7 @@ const app = express();
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (req: express.Request, res: express.Response) => {
   res.json({ 
     status: 'ok', 
     bot: client.isReady() ? 'connected' : 'disconnected',
@@ -61,7 +61,7 @@ app.get('/health', (req, res) => {
 });
 
 // API endpoint for webapp communication
-app.post('/api/test-connection', (req, res) => {
+app.post('/api/test-connection', (req: express.Request, res: express.Response) => {
   // Optional: Verify authorization header
   const authHeader = req.headers.authorization;
   const expectedSecret = process.env.WEBAPP_API_SECRET;

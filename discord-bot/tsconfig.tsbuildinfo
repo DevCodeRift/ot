@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/commands/ping.ts","./src/commands/test-webapp.ts","./src/events/interactioncreate.ts","./src/lib/prisma.ts","./src/types/discord.ts","./src/utils/commandloader.ts","./src/utils/eventloader.ts","./src/utils/rolesync.ts"],"version":"5.9.2"}

@@ -1,5 +1,5 @@
 import { Events, Interaction } from 'discord.js';
-import { SlashCommand } from '@/types/discord';
+import { SlashCommand } from '../types/discord';
 
 export default {
   name: Events.InteractionCreate,

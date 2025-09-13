@@ -663,6 +663,9 @@ model AllianceRole {
   description String? // Optional description of the role
   color       String? // Hex color for UI display
 
+  // Discord Integration
+  discordRoleId String? // Discord role ID for sync
+
   // Module Permissions - which modules this role can access
   modulePermissions String[] // Array of module IDs (membership, war, quests, etc.)
 

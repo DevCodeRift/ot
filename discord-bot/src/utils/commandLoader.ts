@@ -1,8 +1,8 @@
 import { Client, Collection } from 'discord.js';
-import { SlashCommand } from '@/types/discord';
+import { SlashCommand } from '../types/discord';
 import { Logger } from 'winston';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export async function loadCommands(client: Client, logger: Logger): Promise<void> {
   const commandsPath = path.join(__dirname, '..', 'commands');
