@@ -84,6 +84,7 @@ export default function RoleManagementPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncResults, setSyncResults] = useState<any>(null)
+  const [syncingRoles, setSyncingRoles] = useState<Set<string>>(new Set())
 
   // Role assignment management state
   const [showAssignModal, setShowAssignModal] = useState(false)
@@ -216,6 +217,51 @@ export default function RoleManagementPage() {
       setError(err instanceof Error ? err.message : 'Failed to sync existing roles')
     } finally {
       setIsSyncing(false)
+    }
+  }
+
+  const syncIndividualRole = async (roleId: string, roleName: string) => {
+    try {
+      setSyncingRoles(prev => new Set(prev).add(roleId))
+      setError('')
+
+      const response = await fetch(`/api/alliance/roles/${roleId}/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to sync role')
+      }
+
+      const data = await response.json()
+      
+      // Show success message
+      setSyncResults({
+        success: true,
+        message: data.message,
+        results: [{
+          roleId: roleId,
+          roleName: roleName,
+          status: 'success',
+          discordRoleId: data.discordRoleId
+        }]
+      })
+      
+      // Refresh roles to show updated Discord IDs
+      await fetchRoles()
+      
+    } catch (err) {
+      setError(`Failed to sync ${roleName}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setSyncingRoles(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(roleId)
+        return newSet
+      })
     }
   }
 
@@ -456,6 +502,17 @@ export default function RoleManagementPage() {
               </div>
               
               <div className="flex space-x-2">
+                {!role.discordRoleId && (
+                  <button
+                    onClick={() => syncIndividualRole(role.id, role.name)}
+                    disabled={syncingRoles.has(role.id)}
+                    className="p-2 hover:bg-cp-bg-tertiary rounded transition-colors disabled:opacity-50"
+                    title="Sync this role to Discord"
+                  >
+                    <RefreshCw className={`w-4 h-4 text-cp-yellow ${syncingRoles.has(role.id) ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
+                
                 <button
                   onClick={() => handleManageRole(role)}
                   className="p-2 hover:bg-cp-bg-tertiary rounded transition-colors"

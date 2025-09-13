@@ -35,20 +35,37 @@ async function syncExistingRoles(targetAllianceId = null) {
     }
     
     // Find unsynced roles using raw query to avoid TypeScript issues
-    const unsyncedRoles = await prisma.$queryRaw`
-      SELECT 
-        id, 
-        name, 
-        description, 
-        color, 
-        "allianceId",
-        "createdAt"
-      FROM alliance_roles 
-      WHERE "isActive" = true 
-        AND ("discordRoleId" IS NULL OR "discordRoleId" = '')
-        ${targetAllianceId ? `AND "allianceId" = ${parseInt(targetAllianceId)}` : ''}
-      ORDER BY "allianceId", "createdAt"
-    `;
+    let unsyncedRoles;
+    if (targetAllianceId) {
+      unsyncedRoles = await prisma.$queryRaw`
+        SELECT 
+          id, 
+          name, 
+          description, 
+          color, 
+          "allianceId",
+          "createdAt"
+        FROM alliance_roles 
+        WHERE "isActive" = true 
+          AND ("discordRoleId" IS NULL OR "discordRoleId" = '')
+          AND "allianceId" = ${parseInt(targetAllianceId)}
+        ORDER BY "allianceId", "createdAt"
+      `;
+    } else {
+      unsyncedRoles = await prisma.$queryRaw`
+        SELECT 
+          id, 
+          name, 
+          description, 
+          color, 
+          "allianceId",
+          "createdAt"
+        FROM alliance_roles 
+        WHERE "isActive" = true 
+          AND ("discordRoleId" IS NULL OR "discordRoleId" = '')
+        ORDER BY "allianceId", "createdAt"
+      `;
+    }
     
     if (unsyncedRoles.length === 0) {
       console.log('✅ All roles are already synced with Discord!');
