@@ -9,8 +9,7 @@
     "dev": "tsx src/index.ts",
     "watch": "tsx watch src/index.ts",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "postinstall": "prisma generate"
+    "lint:fix": "eslint src/**/*.ts --fix"
   },
   "keywords": [
     "discord",

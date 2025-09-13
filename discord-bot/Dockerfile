@@ -7,18 +7,18 @@ WORKDIR /app
 # Install dependencies for building (including Python for some native modules)
 RUN apk add --no-cache python3 make g++
 
-# Copy package files
+# Copy package files and Prisma schema before installing dependencies
 COPY package*.json ./
 COPY tsconfig.json ./
+COPY prisma/ ./prisma/
 
 # Install ALL dependencies (including dev dependencies for build)
 RUN npm ci
 
 # Copy source code
 COPY src/ ./src/
-COPY prisma/ ./prisma/
 
-# Generate Prisma client
+# Generate Prisma client (now that schema is available)
 RUN npx prisma generate
 
 # Build TypeScript
