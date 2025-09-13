@@ -1,6 +1,7 @@
 // Quick script to make a user an alliance admin for role management testing
-// Run with: node setup-admin.js <discordId> <allianceId>
+// Run with: node -r dotenv/config setup-admin.js <discordId> <allianceId>
 
+require('dotenv').config({ path: '.env.local' })
 const { PrismaClient } = require('@prisma/client')
 
 const prisma = new PrismaClient()
