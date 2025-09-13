@@ -241,7 +241,7 @@ export async function POST(
     }
 
     // Make a request to the Discord bot to get available channels
-    const botResponse = await fetch(`${process.env.DISCORD_BOT_URL}/api/channels/${serverId}`, {
+    const botResponse = await fetch(`${process.env.DISCORD_BOT_API_URL}/api/channels/${serverId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`,
