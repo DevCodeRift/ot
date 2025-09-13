@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Target, Settings, Bell } from 'lucide-react';
 import RaidFinder from './raid-finder';
-import BotConfiguration from './bot-configuration';
+import ModuleBotConfig from './module-bot-config';
 
 interface WarModuleProps {
   allianceId?: number;
@@ -32,7 +32,30 @@ export default function WarModule({ allianceId }: WarModuleProps) {
       case 'raid-finder':
         return <RaidFinder />;
       case 'war-alerts':
-        return allianceId ? <BotConfiguration allianceId={allianceId} /> : (
+        return allianceId ? (
+          <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-cp-text-primary mb-2">War Notifications</h2>
+              <p className="text-cp-text-secondary">
+                Configure Discord channels to receive real-time war alerts and notifications.
+              </p>
+            </div>
+            
+            <ModuleBotConfig
+              allianceId={allianceId}
+              moduleKey="war"
+              moduleName="War"
+              moduleIcon="⚔️"
+              events={[
+                { 
+                  key: 'war_alerts', 
+                  name: 'War Alerts', 
+                  description: 'Notifications when alliance members are attacked or declare war' 
+                }
+              ]}
+            />
+          </div>
+        ) : (
           <div className="cp-card p-6 text-center">
             <p className="text-cp-text-muted">Alliance ID is required for bot configuration</p>
           </div>

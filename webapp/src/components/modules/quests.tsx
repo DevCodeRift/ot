@@ -18,6 +18,7 @@ import {
   UserPlus,
   Settings
 } from 'lucide-react'
+import ModuleBotConfig from './module-bot-config'
 import { 
   QUEST_METRICS, 
   QUEST_CATEGORIES, 
@@ -114,7 +115,7 @@ export default function QuestsModule({ allianceId }: QuestsModuleProps) {
   const [quests, setQuests] = useState<Quest[]>([])
   
   // UI state
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'quests' | 'assignments'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'quests' | 'assignments' | 'notifications'>('overview')
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [showCreateQuest, setShowCreateQuest] = useState(false)
@@ -282,7 +283,8 @@ export default function QuestsModule({ allianceId }: QuestsModuleProps) {
     { id: 'overview', name: 'Overview', icon: Target },
     { id: 'groups', name: 'Quest Groups', icon: Users },
     { id: 'quests', name: 'Quests', icon: Award },
-    { id: 'assignments', name: 'Assignments', icon: UserPlus }
+    { id: 'assignments', name: 'Assignments', icon: UserPlus },
+    { id: 'notifications', name: 'Discord Notifications', icon: Settings }
   ]
 
   if (loading) {
@@ -461,6 +463,36 @@ export default function QuestsModule({ allianceId }: QuestsModuleProps) {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'notifications' && (
+        <div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-cp-text-primary mb-2">Quest Notifications</h2>
+            <p className="text-cp-text-secondary">
+              Configure Discord channels to receive notifications about quest activities and achievements.
+            </p>
+          </div>
+          
+          <ModuleBotConfig
+            allianceId={parseInt(allianceId)}
+            moduleKey="gamification"
+            moduleName="Gamification"
+            moduleIcon="🏆"
+            events={[
+              { 
+                key: 'quest_updates', 
+                name: 'Quest Updates', 
+                description: 'Quest assignment and completion notifications' 
+              },
+              { 
+                key: 'achievement_alerts', 
+                name: 'Achievement Alerts', 
+                description: 'Member achievement and milestone notifications' 
+              }
+            ]}
+          />
         </div>
       )}
 

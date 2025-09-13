@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { DollarSign, Users, TrendingUp, ArrowUpDown, Plus, Minus } from 'lucide-react'
+import { DollarSign, Users, TrendingUp, ArrowUpDown, Plus, Minus, Settings } from 'lucide-react'
+import ModuleBotConfig from './module-bot-config'
 
 interface Alliance {
   id: number
@@ -247,7 +248,8 @@ export function EconomicToolsModule({ allianceId }: EconomicToolsModuleProps) {
 
   const tabs = [
     { id: 'tax-management', name: 'Tax Management', icon: Users },
-    { id: 'holdings', name: 'Holdings', icon: DollarSign }
+    { id: 'holdings', name: 'Holdings', icon: DollarSign },
+    { id: 'notifications', name: 'Discord Notifications', icon: Settings }
   ]
 
   return (
@@ -529,6 +531,36 @@ export function EconomicToolsModule({ allianceId }: EconomicToolsModuleProps) {
               No holdings data available
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'notifications' && (
+        <div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-cp-text-primary mb-2">Economic Notifications</h2>
+            <p className="text-cp-text-secondary">
+              Configure Discord channels to receive notifications about tax collection and bank activities.
+            </p>
+          </div>
+          
+          <ModuleBotConfig
+            allianceId={allianceId}
+            moduleKey="economics"
+            moduleName="Economics"
+            moduleIcon="💰"
+            events={[
+              { 
+                key: 'tax_reminders', 
+                name: 'Tax Reminders', 
+                description: 'Automated tax collection reminders for members' 
+              },
+              { 
+                key: 'bank_alerts', 
+                name: 'Bank Alerts', 
+                description: 'Alliance bank transaction notifications and alerts' 
+              }
+            ]}
+          />
         </div>
       )}
 

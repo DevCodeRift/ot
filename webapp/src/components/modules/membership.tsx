@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import RoleAssignmentComponent from '../role-assignment'
+import ModuleBotConfig from './module-bot-config'
 
 interface Member {
   id: number
@@ -25,7 +26,7 @@ interface Member {
   nation_url: string
 }
 
-type TabType = 'overview' | 'activity' | 'roles' | 'performance'
+type TabType = 'overview' | 'activity' | 'roles' | 'performance' | 'notifications'
 type SortBy = 'nation_name' | 'cities' | 'position' | 'last_active' | 'score'
 type SortOrder = 'asc' | 'desc'
 
@@ -116,7 +117,8 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
     { id: 'overview' as TabType, name: 'Overview', icon: '👥' },
     { id: 'activity' as TabType, name: 'Activity', icon: '📊' },
     { id: 'roles' as TabType, name: 'Roles', icon: '🏛️' },
-    { id: 'performance' as TabType, name: 'Performance', icon: '🎯' }
+    { id: 'performance' as TabType, name: 'Performance', icon: '🎯' },
+    { id: 'notifications' as TabType, name: 'Discord Notifications', icon: '🔔' }
   ]
 
   if (loading) {
@@ -357,6 +359,36 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
               <span className="text-4xl mb-4 block">🎯</span>
               <h3 className="text-lg font-medium text-cp-text-primary mb-2">Performance Analytics</h3>
               <p className="text-cp-text-secondary">Member performance tracking and reporting coming soon.</p>
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div>
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-cp-text-primary mb-2">Recruitment Notifications</h2>
+                <p className="text-cp-text-secondary">
+                  Configure Discord channels to receive notifications about member applications and updates.
+                </p>
+              </div>
+              
+              <ModuleBotConfig
+                allianceId={allianceId}
+                moduleKey="recruitment"
+                moduleName="Recruitment"
+                moduleIcon="📋"
+                events={[
+                  { 
+                    key: 'application_alerts', 
+                    name: 'Application Alerts', 
+                    description: 'New alliance application notifications' 
+                  },
+                  { 
+                    key: 'member_updates', 
+                    name: 'Member Updates', 
+                    description: 'Member join/leave notifications' 
+                  }
+                ]}
+              />
             </div>
           )}
         </div>
