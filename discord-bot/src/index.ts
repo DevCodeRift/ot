@@ -53,9 +53,11 @@ app.use(express.json());
 
 // Import route handlers
 import rolesRouter from './routes/roles';
+import testRouter from './routes/test';
 
 // Use route handlers
 app.use('/api', rolesRouter);
+app.use('/api', testRouter);
 
 // Health check endpoint
 app.get('/health', (req: express.Request, res: express.Response) => {
