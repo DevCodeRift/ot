@@ -5,6 +5,7 @@
 .env.production
 .env.staging
 .env.test
+.env.example
 
 # OS generated files
 .DS_Store
