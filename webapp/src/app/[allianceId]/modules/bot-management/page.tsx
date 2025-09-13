@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signIn } from 'next-auth/react'
 import { Bot, Plus, ExternalLink, Settings, Users, Zap, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 
 interface DiscordServer {
@@ -28,6 +28,8 @@ export default function BotManagementPage() {
   const [botConnections, setBotConnections] = useState<BotConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [testingConnection, setTestingConnection] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [needsReauth, setNeedsReauth] = useState(false)
 
   useEffect(() => {
     // Fetch Discord servers from API
@@ -41,66 +43,43 @@ export default function BotManagementPage() {
         
         if (data.success) {
           setDiscordServers(data.servers)
+          setError(null)
+          setNeedsReauth(false)
         } else {
           console.error('Failed to fetch Discord servers:', data.error)
-          setDiscordServers([]) // Clear any existing servers
+          setError(data.error)
+          if (data.error.includes('access token')) {
+            setNeedsReauth(true)
+          }
+          setDiscordServers([])
         }
       } catch (error) {
         console.error('Error fetching Discord servers:', error)
+        setError('Failed to connect to Discord API')
         setDiscordServers([])
       } finally {
         setLoading(false)
       }
     }
-              botInvited: false
-            },
-            {
-              id: '876543210987654321',
-              name: 'Alliance War Room',
-              icon: null,
-              owner: false,
-              permissions: '8',
-              botInvited: false
-            }
-          ]
-          setDiscordServers(mockServers)
-        }
-      } catch (error) {
-        console.error('Error fetching Discord servers:', error)
-        // Fallback to mock data on error
-        const mockServers: DiscordServer[] = [
-          {
-            id: '123456789012345678',
-            name: 'Rose Alliance Discord',
-            icon: null,
-            owner: true,
-            permissions: '8',
-            botInvited: false
-          }
-        ]
-        setDiscordServers(mockServers)
-      }
+
+    // Fetch bot connections (mock for now)
+    const fetchBotConnections = async () => {
+      // Mock bot connections data - only show if we have actual Discord servers
+      const mockConnections: BotConnection[] = []
+      setBotConnections(mockConnections)
     }
 
-    fetchDiscordServers()
-
-    // Mock bot connections for now
-    const mockConnections: BotConnection[] = [
-      {
-        serverId: '123456789012345678',
-        serverName: 'Rose Alliance Discord',
-        botStatus: 'online',
-        lastSync: '2 minutes ago',
-        memberCount: 156,
-        configuredModules: ['membership', 'war', 'quests']
-      }
-    ]
-
-    setTimeout(() => {
-      setBotConnections(mockConnections)
+    if (session) {
+      fetchDiscordServers()
+      fetchBotConnections()
+    } else {
       setLoading(false)
-    }, 1000)
-  }, [])
+    }
+  }, [session])
+
+  const handleReauth = () => {
+    signIn('discord', { callbackUrl: window.location.href })
+  }
 
   const handleInviteBot = async (serverId: string) => {
     try {
