@@ -27,38 +27,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Define bot permissions for Politics & War Alliance Management
-    const botPermissions = permissions || [
-      'VIEW_CHANNELS',          // 1024 (0x400)
-      'SEND_MESSAGES',          // 2048 (0x800)
-      'USE_SLASH_COMMANDS',     // 2147483648 (0x80000000)
-      'MANAGE_MESSAGES',        // 8192 (0x2000)
-      'EMBED_LINKS',           // 16384 (0x4000)
-      'ATTACH_FILES',          // 32768 (0x8000)
-      'READ_MESSAGE_HISTORY',   // 65536 (0x10000)
-      'ADD_REACTIONS',         // 64 (0x40)
-      'USE_EXTERNAL_EMOJIS',   // 262144 (0x40000)
-      'CONNECT',               // 1048576 (0x100000) - for voice channels
-      'SPEAK'                  // 2097152 (0x200000) - for voice channels
-    ]
+    // Using the calculated permission integer: 2270348099808337
+    const defaultPermissions = 2270348099808337
 
-    // Calculate permission integer (sum of all permission values)
-    const permissionMap: Record<string, number> = {
-      'VIEW_CHANNELS': 1024,
-      'SEND_MESSAGES': 2048,
-      'USE_SLASH_COMMANDS': 2147483648,
-      'MANAGE_MESSAGES': 8192,
-      'EMBED_LINKS': 16384,
-      'ATTACH_FILES': 32768,
-      'READ_MESSAGE_HISTORY': 65536,
-      'ADD_REACTIONS': 64,
-      'USE_EXTERNAL_EMOJIS': 262144,
-      'CONNECT': 1048576,
-      'SPEAK': 2097152
-    }
-
-    const permissionValue = botPermissions.reduce((sum: number, perm: string) => {
-      return sum + (permissionMap[perm] || 0)
-    }, 0)
+    const permissionValue = permissions ? 
+      (typeof permissions === 'number' ? permissions : defaultPermissions) : 
+      defaultPermissions
 
     // Generate Discord OAuth2 authorize URL for bot invite
     const scope = 'bot applications.commands'
@@ -78,11 +52,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       inviteUrl: inviteUrl.toString(),
-      permissions: botPermissions,
       permissionValue,
       serverId,
       botClientId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      note: 'Using comprehensive bot permissions for alliance management'
     })
 
   } catch (error) {
@@ -112,26 +86,25 @@ export async function GET(request: NextRequest) {
       success: true,
       botClientId: botClientId || null,
       configured: !!botClientId,
+      permissionValue: 2270348099808337,
       requiredPermissions: [
-        'VIEW_CHANNELS',
-        'SEND_MESSAGES',
-        'USE_SLASH_COMMANDS',
-        'MANAGE_MESSAGES',
-        'EMBED_LINKS',
-        'ATTACH_FILES',
-        'READ_MESSAGE_HISTORY',
-        'ADD_REACTIONS',
-        'USE_EXTERNAL_EMOJIS',
-        'CONNECT',
-        'SPEAK'
+        'Manage Roles', 'Manage Channels', 'Create Instant Invite', 
+        'Change Nickname', 'Manage Nicknames', 'View Channels',
+        'Manage Events', 'Create Events', 'Send Messages',
+        'Create Public Threads', 'Create Private Threads', 'Send Messages in Threads',
+        'Manage Messages', 'Pin Messages', 'Manage Threads',
+        'Embed Links', 'Read Message History', 'Add Reactions',
+        'Use Slash Commands', 'Use Embedded Activities', 'Use Embedded Activities (Voice)'
       ],
       features: [
         'Alliance member management commands',
-        'War coordination and tracking',
+        'War coordination and tracking', 
         'Quest assignment and progress tracking',
         'Economic monitoring and alerts',
         'Real-time sync with webapp data',
-        'Role-based command permissions'
+        'Role-based command permissions',
+        'Event management and coordination',
+        'Thread-based discussions'
       ]
     })
 
