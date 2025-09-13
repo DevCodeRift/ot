@@ -53,7 +53,7 @@ export function MobileNavigation({ currentModule, onModuleChange, className = ''
 
   return (
     <>
-      {/* Mobile Header Bar */}
+      {/* Mobile Header Bar - Hidden on desktop */}
       <div className={`
         lg:hidden fixed top-0 left-0 right-0 z-50
         bg-cp-bg-secondary/95 backdrop-blur-sm border-b border-cp-border

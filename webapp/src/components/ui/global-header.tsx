@@ -110,8 +110,9 @@ export function GlobalHeader({ currentModule, allianceId, className = '' }: Glob
   return (
     <>
       <header className={`
+        hidden lg:flex
         bg-cp-bg-secondary border-b border-cp-border 
-        px-6 py-4 flex items-center justify-between
+        px-6 py-4 items-center justify-between
         sticky top-0 z-40 backdrop-blur-sm bg-cp-bg-secondary/95
         ${className}
       `}>
