@@ -62,11 +62,43 @@ export default function BotManagementPage() {
       }
     }
 
-    // Fetch bot connections (mock for now)
+    // Fetch bot connections from the actual Discord bot
     const fetchBotConnections = async () => {
-      // Mock bot connections data - only show if we have actual Discord servers
-      const mockConnections: BotConnection[] = []
-      setBotConnections(mockConnections)
+      try {
+        // Test connection to Discord bot to get active connections
+        const response = await fetch('/api/bot/test-connection', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            serverId: 'global', // Special ID to get bot status
+            message: 'Checking bot connections'
+          }),
+        })
+
+        const result = await response.json()
+        
+        if (result.success && result.botResponse) {
+          // Create mock connection data based on bot response
+          const activeConnections: BotConnection[] = result.botResponse.serverCount > 0 ? [{
+            serverId: 'bot-connection',
+            serverName: 'Discord Bot',
+            botStatus: result.botResponse.botStatus === 'online' ? 'online' : 'offline',
+            lastSync: new Date(result.botResponse.timestamp).toLocaleString(),
+            memberCount: result.botResponse.serverCount || 0,
+            configuredModules: ['ping', 'test-webapp']
+          }] : []
+          
+          setBotConnections(activeConnections)
+        } else {
+          // Bot not available, show empty connections
+          setBotConnections([])
+        }
+      } catch (error) {
+        console.error('Error fetching bot connections:', error)
+        setBotConnections([])
+      }
     }
 
     if (session) {
