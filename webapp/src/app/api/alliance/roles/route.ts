@@ -42,11 +42,53 @@ export async function GET(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // Return empty roles array until database tables are created
+    // Get all roles for this alliance
+    const roles = await prisma.allianceRole.findMany({
+      where: {
+        allianceId: session.user.currentAllianceId,
+        isActive: true
+      },
+      include: {
+        userRoles: {
+          where: { isActive: true },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                discordUsername: true,
+                pwNationName: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { displayOrder: 'asc' }
+    })
+
     return NextResponse.json({
-      roles: [],
-      message: 'Role management system ready - database tables need to be created',
-      status: 'pending_setup'
+      roles: roles.map(role => ({
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        color: role.color,
+        modulePermissions: role.modulePermissions,
+        permissions: {
+          canAssignRoles: role.canAssignRoles,
+          canCreateQuests: role.canCreateQuests,
+          canManageMembers: role.canManageMembers,
+          canViewWarData: role.canViewWarData,
+          canManageEconomics: role.canManageEconomics,
+          canManageRecruitment: role.canManageRecruitment
+        },
+        createdAt: role.createdAt,
+        assignedUsers: role.userRoles.map(ur => ({
+          id: ur.user.id,
+          name: ur.user.name || ur.user.discordUsername || ur.user.pwNationName || 'Unknown',
+          assignedAt: ur.assignedAt,
+          expiresAt: ur.expiresAt
+        }))
+      }))
     })
 
   } catch (error) {
@@ -83,13 +125,67 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = createRoleSchema.parse(body)
 
-    // Return mock response until database is set up
+    // Create the role in the database
+    const newRole = await prisma.allianceRole.create({
+      data: {
+        allianceId: session.user.currentAllianceId,
+        name: validatedData.name,
+        description: validatedData.description,
+        color: validatedData.color || '#00f5ff', // Default cyberpunk cyan
+        modulePermissions: validatedData.modulePermissions,
+        canAssignRoles: validatedData.canAssignRoles,
+        canCreateQuests: validatedData.canCreateQuests,
+        canManageMembers: validatedData.canManageMembers,
+        canViewWarData: validatedData.canViewWarData,
+        canManageEconomics: validatedData.canManageEconomics,
+        canManageRecruitment: validatedData.canManageRecruitment,
+        displayOrder: validatedData.displayOrder,
+        createdBy: session.user.id
+      }
+    })
+
+    // Create audit log
+    await prisma.roleAuditLog.create({
+      data: {
+        allianceId: session.user.currentAllianceId,
+        actionType: 'role_created',
+        performedBy: session.user.id,
+        roleId: newRole.id,
+        roleName: newRole.name,
+        newPermissions: {
+          modulePermissions: validatedData.modulePermissions,
+          permissions: {
+            canAssignRoles: validatedData.canAssignRoles,
+            canCreateQuests: validatedData.canCreateQuests,
+            canManageMembers: validatedData.canManageMembers,
+            canViewWarData: validatedData.canViewWarData,
+            canManageEconomics: validatedData.canManageEconomics,
+            canManageRecruitment: validatedData.canManageRecruitment
+          }
+        }
+      }
+    })
+
     return NextResponse.json({
       success: true,
-      message: 'Role creation will be available once database tables are created',
+      message: 'Role created successfully',
       role: {
-        id: 'mock-role-id',
-        ...validatedData
+        id: newRole.id,
+        name: newRole.name,
+        description: newRole.description,
+        color: newRole.color,
+        modulePermissions: newRole.modulePermissions,
+        permissions: {
+          canAssignRoles: newRole.canAssignRoles,
+          canCreateQuests: newRole.canCreateQuests,
+          canManageMembers: newRole.canManageMembers,
+          canViewWarData: newRole.canViewWarData,
+          canManageEconomics: newRole.canManageEconomics,
+          canManageRecruitment: newRole.canManageRecruitment
+        },
+        displayOrder: newRole.displayOrder,
+        createdAt: newRole.createdAt,
+        assignedUsers: []
       }
     })
 
