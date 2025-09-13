@@ -92,6 +92,14 @@ export function RoleAssignmentComponent({ allianceId, members, onMemberUpdate }:
       }
 
       const data = await response.json()
+      
+      // Check if database is not ready
+      if (data.status === 'pending_setup') {
+        setError('Database setup required: ' + data.message)
+        setRoles([])
+        return
+      }
+      
       setRoles(data.roles)
     } catch (err) {
       setError('Failed to load roles')

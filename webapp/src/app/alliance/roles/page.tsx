@@ -103,6 +103,14 @@ export default function RoleManagementPage() {
       }
 
       const data = await response.json()
+      
+      // Check if database is not ready
+      if (data.status === 'pending_setup') {
+        setError('Database Setup Required: ' + data.message)
+        setRoles([])
+        return
+      }
+      
       setRoles(data.roles)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load roles')
