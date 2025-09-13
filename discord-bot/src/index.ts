@@ -62,11 +62,20 @@ app.get('/health', (req, res) => {
 
 // API endpoint for webapp communication
 app.post('/api/test-connection', (req, res) => {
+  // Optional: Verify authorization header
+  const authHeader = req.headers.authorization;
+  const expectedSecret = process.env.WEBAPP_API_SECRET;
+  
+  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+    logger.warn('Unauthorized webapp connection attempt');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
   const { serverId, message } = req.body;
   
   logger.info('Received test connection request', { serverId, message });
   
-  res.json({
+  return res.json({
     success: true,
     message: 'Discord bot received your message!',
     botStatus: client.isReady() ? 'online' : 'offline',
