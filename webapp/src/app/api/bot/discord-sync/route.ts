@@ -26,22 +26,50 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = discordSyncSchema.parse(body)
 
-    // Forward the request to the Discord bot
-    // In production, this would be sent to the bot's webhook endpoint
-    // For now, we'll return success and log the action
-    console.log(`Discord sync request: ${validatedData.action} role ${validatedData.discordRoleId} for user ${validatedData.discordUserId} in alliance ${validatedData.allianceId}`)
-
-    // TODO: Implement actual Discord bot communication
-    // This could be done via:
-    // 1. HTTP webhook to the bot
-    // 2. Message queue (Redis, RabbitMQ)
-    // 3. Database-based queue the bot polls
+    // Get Discord bot URL from environment
+    const DISCORD_BOT_URL = process.env.DISCORD_BOT_API_URL || process.env.DISCORD_BOT_URL || 'https://ot-production.up.railway.app'
     
-    return NextResponse.json({
-      success: true,
-      message: 'Discord sync request queued',
-      request: validatedData
-    })
+    // Forward the request to the Discord bot
+    try {
+      const botResponse = await fetch(`${DISCORD_BOT_URL}/api/sync-role`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
+        },
+        body: JSON.stringify({
+          action: validatedData.action,
+          discordUserId: validatedData.discordUserId,
+          discordRoleId: validatedData.discordRoleId,
+          allianceId: validatedData.allianceId
+        })
+      })
+
+      if (!botResponse.ok) {
+        const errorText = await botResponse.text()
+        console.error('Discord bot role sync failed:', errorText)
+        return NextResponse.json(
+          { error: 'Discord role sync failed', details: errorText },
+          { status: 502 }
+        )
+      }
+
+      const botResult = await botResponse.json()
+      console.log(`Discord sync successful: ${validatedData.action} role ${validatedData.discordRoleId} for user ${validatedData.discordUserId}`)
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Discord role sync completed',
+        result: botResult
+      })
+
+    } catch (fetchError) {
+      console.error('Failed to communicate with Discord bot:', fetchError)
+      return NextResponse.json(
+        { error: 'Failed to communicate with Discord bot', details: fetchError instanceof Error ? fetchError.message : 'Unknown error' },
+        { status: 502 }
+      )
+    }
 
   } catch (error) {
     if (error instanceof z.ZodError) {
