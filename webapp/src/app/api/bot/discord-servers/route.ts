@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
       console.log('No Discord access token in session')
       return NextResponse.json({ 
         error: 'Discord access token not available',
-        message: 'Please re-authenticate with Discord'
+        message: 'Please re-authenticate with Discord to grant server access permissions',
+        requiresReauth: true
       }, { status: 400 })
     }
 

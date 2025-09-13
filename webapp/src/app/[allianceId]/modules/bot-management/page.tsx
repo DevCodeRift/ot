@@ -33,21 +33,25 @@ export default function BotManagementPage() {
     // Fetch Discord servers from API
     const fetchDiscordServers = async () => {
       try {
+        console.log('Fetching Discord servers...')
         const response = await fetch('/api/bot/discord-servers')
         const data = await response.json()
+        
+        console.log('Discord servers response:', data)
         
         if (data.success) {
           setDiscordServers(data.servers)
         } else {
           console.error('Failed to fetch Discord servers:', data.error)
-          // Fallback to mock data
-          const mockServers: DiscordServer[] = [
-            {
-              id: '123456789012345678',
-              name: 'Rose Alliance Discord',
-              icon: null,
-              owner: true,
-              permissions: '8',
+          setDiscordServers([]) // Clear any existing servers
+        }
+      } catch (error) {
+        console.error('Error fetching Discord servers:', error)
+        setDiscordServers([])
+      } finally {
+        setLoading(false)
+      }
+    }
               botInvited: false
             },
             {
