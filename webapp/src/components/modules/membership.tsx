@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import RoleAssignmentComponent from '../role-assignment'
 
 interface Member {
   id: number
@@ -341,11 +342,14 @@ export function MembershipModule({ allianceId }: MembershipModuleProps) {
           )}
 
           {activeTab === 'roles' && (
-            <div className="text-center py-12">
-              <span className="text-4xl mb-4 block">🏛️</span>
-              <h3 className="text-lg font-medium text-cp-text-primary mb-2">Role Management</h3>
-              <p className="text-cp-text-secondary">Alliance position and role management tools coming soon.</p>
-            </div>
+            <RoleAssignmentComponent 
+              allianceId={allianceId}
+              members={members}
+              onMemberUpdate={() => {
+                // Refresh member data when roles are updated
+                fetchMembers()
+              }}
+            />
           )}
 
           {activeTab === 'performance' && (
