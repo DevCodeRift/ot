@@ -197,24 +197,40 @@ export class PWSubscriptionService {
   private async handleWarCreateEvent(data: any) {
     try {
       this.logger.info('[PW_SUBSCRIPTION] Processing war create event');
-      this.logger.info('[PW_SUBSCRIPTION] War event data structure:', JSON.stringify(data, null, 2));
+      this.logger.info('[PW_SUBSCRIPTION] Raw event data:', JSON.stringify(data, null, 2));
       
-      // Try different ways to access the war data
+      // According to P&W docs: "The data field in a normal event will be a string containing a JSON-serialized object"
       let warData = null;
       
-      // Option 1: Direct data access
-      if (data && typeof data === 'object' && !data.data) {
-        warData = data;
-        this.logger.info('[PW_SUBSCRIPTION] Using direct data access for war');
+      if (typeof data === 'string') {
+        // Sometimes the entire event is a string
+        warData = JSON.parse(data);
+        this.logger.info('[PW_SUBSCRIPTION] Parsed entire event as JSON string');
+      } else if (data && typeof data.data === 'string') {
+        // Normal case: data.data is a JSON string
+        warData = JSON.parse(data.data);
+        this.logger.info('[PW_SUBSCRIPTION] Parsed data.data as JSON string');
+      } else if (data && data.data) {
+        // Fallback: data.data is already an object
+        warData = data.data;
+        this.logger.info('[PW_SUBSCRIPTION] Using data.data as object');
+      } else {
+        this.logger.warn('[PW_SUBSCRIPTION] No data field found in war create event');
+        this.logger.info('[PW_SUBSCRIPTION] Available properties:', Object.keys(data || {}));
+        return;
       }
       
-      // Option 2: data.data property
-      if (!warData && data.data) {
-        warData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-        this.logger.info('[PW_SUBSCRIPTION] Using data.data property for war');
-      }
+      await this.handleSingleWar(warData);
       
-      this.logger.info('[PW_SUBSCRIPTION] Final war data:', JSON.stringify(warData, null, 2));
+    } catch (error) {
+      this.logger.error('[PW_SUBSCRIPTION] Error processing war create event:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Error details:', error);
+    }
+  }
+
+  private async handleSingleWar(warData: any) {
+    try {
+      this.logger.info('[PW_SUBSCRIPTION] Processing single war:', JSON.stringify(warData, null, 2));
       
       if (!warData || !warData.id) {
         this.logger.warn('[PW_SUBSCRIPTION] Invalid war data - missing id');
@@ -232,7 +248,7 @@ export class PWSubscriptionService {
       this.logger.info(`[PW_SUBSCRIPTION] Alliance involved: ${isAllianceInvolved}`);
       
       if (isAllianceInvolved) {
-        this.logger.info(`[PW_SUBSCRIPTION] Alliance war detected! War ID: ${warData.id}`);
+        this.logger.info(`[PW_SUBSCRIPTION] 🎯 Alliance war detected! War ID: ${warData.id}`);
         
         // Convert to our War interface format
         const war = this.parseWarData(warData);
@@ -240,11 +256,11 @@ export class PWSubscriptionService {
         // Send war alert
         await this.handleWarAlert(war);
       } else {
-        this.logger.info(`[PW_SUBSCRIPTION] War ${warData.id} doesn't involve tracked alliances (${attAllianceId}, ${defAllianceId})`);
+        this.logger.info(`[PW_SUBSCRIPTION] War ${warData.id} doesn't involve tracked alliances (att: ${attAllianceId}, def: ${defAllianceId})`);
       }
       
     } catch (error) {
-      this.logger.error('[PW_SUBSCRIPTION] Error processing war create event:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Error processing single war:', error);
       this.logger.error('[PW_SUBSCRIPTION] Error details:', error);
     }
   }
@@ -252,27 +268,28 @@ export class PWSubscriptionService {
   private async handleBulkWarCreateEvent(data: any) {
     try {
       this.logger.info('[PW_SUBSCRIPTION] Processing bulk war create event');
-      this.logger.info('[PW_SUBSCRIPTION] Raw data received:', JSON.stringify(data, null, 2));
+      this.logger.info('[PW_SUBSCRIPTION] Raw event data:', JSON.stringify(data, null, 2));
       
-      // Try different ways to access the data
+      // According to P&W docs: "The data field in a normal event will be a string containing a JSON-serialized object"
+      // For bulk events: "Bulk events will contain a string with a JSON-serialized array of objects"
       let warsData = null;
       
-      // Option 1: Direct data access
-      if (data && typeof data === 'object') {
-        warsData = data;
-        this.logger.info('[PW_SUBSCRIPTION] Using direct data access');
-      }
-      
-      // Option 2: data.data property
-      if (!warsData && data.data) {
-        warsData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-        this.logger.info('[PW_SUBSCRIPTION] Using data.data property');
-      }
-      
-      // Option 3: Check for wars property
-      if (!warsData && data.wars) {
-        warsData = data.wars;
-        this.logger.info('[PW_SUBSCRIPTION] Using data.wars property');
+      if (typeof data === 'string') {
+        // Sometimes the entire event is a string
+        warsData = JSON.parse(data);
+        this.logger.info('[PW_SUBSCRIPTION] Parsed entire event as JSON string');
+      } else if (data && typeof data.data === 'string') {
+        // Normal case: data.data is a JSON string
+        warsData = JSON.parse(data.data);
+        this.logger.info('[PW_SUBSCRIPTION] Parsed data.data as JSON string');
+      } else if (data && data.data) {
+        // Fallback: data.data is already an object
+        warsData = data.data;
+        this.logger.info('[PW_SUBSCRIPTION] Using data.data as object');
+      } else {
+        this.logger.warn('[PW_SUBSCRIPTION] No data field found in event');
+        this.logger.info('[PW_SUBSCRIPTION] Available properties:', Object.keys(data || {}));
+        return;
       }
       
       this.logger.info('[PW_SUBSCRIPTION] Final wars data:', JSON.stringify(warsData, null, 2));
@@ -280,15 +297,14 @@ export class PWSubscriptionService {
       if (Array.isArray(warsData)) {
         this.logger.info(`[PW_SUBSCRIPTION] Processing ${warsData.length} wars from bulk event`);
         for (const warData of warsData) {
-          // Process each war individually
-          await this.handleWarCreateEvent({ data: warData });
+          // Process each war individually - pass the war data directly
+          await this.handleSingleWar(warData);
         }
       } else if (warsData && typeof warsData === 'object') {
-        this.logger.info('[PW_SUBSCRIPTION] Non-array wars data, processing as single war');
-        await this.handleWarCreateEvent({ data: warsData });
+        this.logger.info('[PW_SUBSCRIPTION] Single war in bulk event');
+        await this.handleSingleWar(warsData);
       } else {
-        this.logger.warn('[PW_SUBSCRIPTION] No wars data found in bulk event');
-        this.logger.info('[PW_SUBSCRIPTION] Available properties:', Object.keys(data || {}));
+        this.logger.warn('[PW_SUBSCRIPTION] Invalid wars data structure');
       }
       
     } catch (error) {
