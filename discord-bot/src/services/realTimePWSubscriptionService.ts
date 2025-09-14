@@ -194,16 +194,22 @@ export class PWSubscriptionService {
 
   private async handleWarCreateEvent(data: any) {
     try {
-      this.logger.info('[PW_SUBSCRIPTION] Processing war create event:', data);
+      this.logger.info('[PW_SUBSCRIPTION] Processing war create event');
+      this.logger.info('[PW_SUBSCRIPTION] War event data structure:', JSON.stringify(data, null, 2));
       
       // Parse the war data from the event
       const warData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      this.logger.info('[PW_SUBSCRIPTION] Parsed war data:', JSON.stringify(warData, null, 2));
       
       // Check if this war involves any of our tracked alliances
       const attAllianceId = parseInt(warData.att_alliance_id) || 0;
       const defAllianceId = parseInt(warData.def_alliance_id) || 0;
       
+      this.logger.info(`[PW_SUBSCRIPTION] War ${warData.id}: attacker alliance ${attAllianceId}, defender alliance ${defAllianceId}`);
+      this.logger.info(`[PW_SUBSCRIPTION] Tracking alliances: ${this.allianceIds.join(', ')}`);
+      
       const isAllianceInvolved = this.allianceIds.includes(attAllianceId) || this.allianceIds.includes(defAllianceId);
+      this.logger.info(`[PW_SUBSCRIPTION] Alliance involved: ${isAllianceInvolved}`);
       
       if (isAllianceInvolved) {
         this.logger.info(`[PW_SUBSCRIPTION] Alliance war detected! War ID: ${warData.id}`);
@@ -214,30 +220,40 @@ export class PWSubscriptionService {
         // Send war alert
         await this.handleWarAlert(war);
       } else {
-        this.logger.debug(`[PW_SUBSCRIPTION] War ${warData.id} doesn't involve tracked alliances (${attAllianceId}, ${defAllianceId})`);
+        this.logger.info(`[PW_SUBSCRIPTION] War ${warData.id} doesn't involve tracked alliances (${attAllianceId}, ${defAllianceId})`);
       }
       
     } catch (error) {
       this.logger.error('[PW_SUBSCRIPTION] Error processing war create event:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Error details:', error);
     }
   }
 
   private async handleBulkWarCreateEvent(data: any) {
     try {
       this.logger.info('[PW_SUBSCRIPTION] Processing bulk war create event');
+      this.logger.info('[PW_SUBSCRIPTION] Raw data received:', JSON.stringify(data, null, 2));
       
       // Parse the bulk data
       const warsData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      this.logger.info('[PW_SUBSCRIPTION] Parsed wars data:', JSON.stringify(warsData, null, 2));
       
       if (Array.isArray(warsData)) {
+        this.logger.info(`[PW_SUBSCRIPTION] Processing ${warsData.length} wars from bulk event`);
         for (const warData of warsData) {
           // Process each war individually
           await this.handleWarCreateEvent({ data: warData });
         }
+      } else if (warsData) {
+        this.logger.info('[PW_SUBSCRIPTION] Non-array wars data, processing as single war');
+        await this.handleWarCreateEvent({ data: warsData });
+      } else {
+        this.logger.warn('[PW_SUBSCRIPTION] No wars data found in bulk event');
       }
       
     } catch (error) {
       this.logger.error('[PW_SUBSCRIPTION] Error processing bulk war create event:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Error details:', error);
     }
   }
 
