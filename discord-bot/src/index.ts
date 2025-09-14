@@ -7,7 +7,7 @@ import { SlashCommand } from './types/discord';
 import { loadCommands } from './utils/commandLoader';
 import { loadEvents } from './utils/eventLoader';
 import { registerCommands } from './utils/commandRegistry';
-import { PWKitSubscriptionService } from './services/pnwkitSubscriptionService';
+import { FixedPWSubscriptionService } from './services/fixedPWSubscriptionService';
 import { AutomatedMonitoringService } from './services/automatedMonitoringService';
 
 // Load environment variables
@@ -37,8 +37,8 @@ const logger = winston.createLogger({
 // Initialize Prisma client (shared database with webapp)
 const prisma = new PrismaClient();
 
-// Initialize P&W subscription service (using pnwkit-2.0)
-let pwSubscriptionService: PWKitSubscriptionService;
+// Initialize P&W subscription service (using fixed version with URL parameters)
+let pwSubscriptionService: FixedPWSubscriptionService;
 
 // Initialize automated monitoring service
 let monitoringService: AutomatedMonitoringService;
@@ -350,7 +350,7 @@ async function shutdown() {
     
     // Shutdown P&W subscription service
     if (pwSubscriptionService) {
-      await pwSubscriptionService.shutdown();
+      await pwSubscriptionService.stop();
       logger.info('📡 P&W subscription service shutdown');
     }
     
@@ -392,7 +392,7 @@ async function start() {
       
       // Initialize P&W subscription service for war alerts
       try {
-        pwSubscriptionService = new PWKitSubscriptionService(prisma, logger);
+        pwSubscriptionService = new FixedPWSubscriptionService(prisma, logger);
         await pwSubscriptionService.initialize();
         logger.info('📡 P&W subscription service initialized');
       } catch (error) {
