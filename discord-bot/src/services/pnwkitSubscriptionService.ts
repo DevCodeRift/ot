@@ -112,7 +112,7 @@ export class PWKitSubscriptionService {
 
       const data = await response.json();
       if (data.success && data.apiKey) {
-        this.logger.info(`[PNWKIT_SUBSCRIPTION] Got API key for alliance ${allianceId} from ${data.providedBy?.nationName}`);
+        this.logger.info(`[PNWKIT_SUBSCRIPTION] Got system API key for alliance ${allianceId} - automatic monitoring enabled`);
         return data.apiKey;
       }
       
