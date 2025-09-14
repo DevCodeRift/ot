@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,40 +22,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid allianceId' }, { status: 400 })
     }
 
-    // Find users from this alliance who have API keys
-    const usersWithApiKeys = await prisma.user.findMany({
-      where: {
-        currentAllianceId: allianceIdNum,
-        pwApiKey: {
-          not: null
-        }
-      },
-      select: {
-        id: true,
-        pwApiKey: true,
-        pwNationName: true,
-        pwNationId: true
-      },
-      take: 1 // Just need one API key for the alliance
-    })
-
-    if (usersWithApiKeys.length === 0) {
+    // Use system-wide P&W API key for monitoring all alliances
+    const systemApiKey = process.env.POLITICS_AND_WAR_API_KEY
+    
+    if (!systemApiKey) {
       return NextResponse.json({ 
-        error: 'No P&W API key found for this alliance',
-        details: 'Alliance members need to connect their P&W accounts and provide API keys'
-      }, { status: 404 })
+        error: 'System P&W API key not configured',
+        details: 'Server administrator needs to set POLITICS_AND_WAR_API_KEY environment variable'
+      }, { status: 500 })
     }
 
-    const user = usersWithApiKeys[0]
-    
     return NextResponse.json({
       success: true,
       allianceId: allianceIdNum,
-      apiKey: user.pwApiKey,
-      providedBy: {
-        nationName: user.pwNationName,
-        nationId: user.pwNationId
-      }
+      apiKey: systemApiKey,
+      source: 'system',
+      message: 'Using system API key for alliance-wide monitoring'
     })
 
   } catch (error) {
