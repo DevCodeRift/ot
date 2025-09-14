@@ -52,14 +52,74 @@ export class PWKitSubscriptionService {
   async initialize() {
     try {
       this.logger.info('[PNWKIT_SUBSCRIPTION] Initializing pnwkit subscription service...');
-      this.logger.info('[PNWKIT_SUBSCRIPTION] P&W API keys will be obtained per-alliance from webapp');
       
-      // Service is now ready but won't subscribe until we have alliance-specific API keys
-      this.logger.info('[PNWKIT_SUBSCRIPTION] Service initialized (waiting for alliance-specific API keys)');
+      // Get active alliances from Discord servers
+      const activeServers = await this.prisma.discordServer.findMany({
+        where: {
+          isActive: true,
+          allianceId: { not: null }
+        },
+        select: { allianceId: true },
+        distinct: ['allianceId']
+      });
+
+      const allianceIds = activeServers
+        .map(server => server.allianceId)
+        .filter(id => id !== null) as number[];
+
+      if (allianceIds.length === 0) {
+        this.logger.warn('[PNWKIT_SUBSCRIPTION] No active alliances found, skipping war alerts setup');
+        return;
+      }
+
+      this.logger.info(`[PNWKIT_SUBSCRIPTION] Found active alliances: ${allianceIds.join(', ')}`);
+
+      // Get P&W API key from webapp for the first alliance
+      // In the future, this could be enhanced to handle multiple alliance keys
+      const apiKey = await this.getApiKeyFromWebapp(allianceIds[0]);
+      
+      if (!apiKey) {
+        this.logger.warn('[PNWKIT_SUBSCRIPTION] No P&W API key available, war alerts will be disabled');
+        return;
+      }
+
+      // Set API key for pnwkit
+      pnwkit.setKeys(apiKey);
+      this.logger.info('[PNWKIT_SUBSCRIPTION] P&W API key configured from webapp');
+
+      // Subscribe to war events
+      await this.subscribeToWarEvents(allianceIds);
       
     } catch (error) {
       this.logger.error('[PNWKIT_SUBSCRIPTION] Failed to initialize:', error);
       throw error;
+    }
+  }
+
+  private async getApiKeyFromWebapp(allianceId: number): Promise<string | null> {
+    try {
+      const webappUrl = process.env.WEBAPP_API_URL || 'http://localhost:3000';
+      const response = await fetch(`${webappUrl}/api/bot/alliance-api-key?allianceId=${allianceId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.WEBAPP_BOT_SECRET}`
+        }
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`[PNWKIT_SUBSCRIPTION] Failed to get API key for alliance ${allianceId}: ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.success && data.apiKey) {
+        this.logger.info(`[PNWKIT_SUBSCRIPTION] Got API key for alliance ${allianceId} from ${data.providedBy?.nationName}`);
+        return data.apiKey;
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.error(`[PNWKIT_SUBSCRIPTION] Error fetching API key for alliance ${allianceId}:`, error);
+      return null;
     }
   }
 
