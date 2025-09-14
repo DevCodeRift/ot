@@ -7,7 +7,7 @@ import { SlashCommand } from './types/discord';
 import { loadCommands } from './utils/commandLoader';
 import { loadEvents } from './utils/eventLoader';
 import { registerCommands } from './utils/commandRegistry';
-import { FixedPWSubscriptionService } from './services/fixedPWSubscriptionService';
+import { PWSubscriptionService } from './services/realTimePWSubscriptionService';
 import { AutomatedMonitoringService } from './services/automatedMonitoringService';
 
 // Load environment variables
@@ -37,8 +37,8 @@ const logger = winston.createLogger({
 // Initialize Prisma client (shared database with webapp)
 const prisma = new PrismaClient();
 
-// Initialize P&W subscription service (using fixed version with URL parameters)
-let pwSubscriptionService: FixedPWSubscriptionService;
+// Initialize P&W subscription service (using real-time subscriptions)
+let pwSubscriptionService: PWSubscriptionService;
 
 // Initialize automated monitoring service
 let monitoringService: AutomatedMonitoringService;
@@ -392,7 +392,7 @@ async function start() {
       
       // Initialize P&W subscription service for war alerts
       try {
-        pwSubscriptionService = new FixedPWSubscriptionService(prisma, logger);
+        pwSubscriptionService = new PWSubscriptionService(prisma, logger);
         await pwSubscriptionService.initialize();
         logger.info('📡 P&W subscription service initialized');
       } catch (error) {

@@ -1,7 +1,8 @@
-// Fixed P&W subscription service that uses URL parameters instead of headers
+// P&W subscription service using official P&W subscription API with Pusher
 
 import { PrismaClient } from '@prisma/client';
 import * as winston from 'winston';
+import Pusher from 'pusher-js';
 
 interface War {
   id: string;
@@ -34,14 +35,14 @@ interface War {
   };
 }
 
-export class FixedPWSubscriptionService {
+export class PWSubscriptionService {
   private prisma: PrismaClient;
   private logger: winston.Logger;
   private isMonitoring = false;
   private apiKey: string | null = null;
   private allianceIds: number[] = [];
-  private pollingInterval: NodeJS.Timeout | null = null;
-  private lastCheckedWarId: string | null = null;
+  private pusher: Pusher | null = null;
+  private warChannel: any = null;
 
   constructor(prisma: PrismaClient, logger: winston.Logger) {
     this.prisma = prisma;
@@ -50,7 +51,7 @@ export class FixedPWSubscriptionService {
 
   async initialize() {
     try {
-      this.logger.info('[FIXED_PW_SUBSCRIPTION] Initializing fixed P&W subscription service...');
+      this.logger.info('[PW_SUBSCRIPTION] Initializing P&W subscription service with official API...');
       
       // Get active alliances from Discord servers
       const activeServers = await this.prisma.discordServer.findMany({
@@ -67,27 +68,27 @@ export class FixedPWSubscriptionService {
         .filter(id => id !== null) as number[];
 
       if (this.allianceIds.length === 0) {
-        this.logger.warn('[FIXED_PW_SUBSCRIPTION] No active alliances found, skipping war alerts setup');
+        this.logger.warn('[PW_SUBSCRIPTION] No active alliances found, skipping war alerts setup');
         return;
       }
 
-      this.logger.info(`[FIXED_PW_SUBSCRIPTION] Found active alliances: ${this.allianceIds.join(', ')}`);
+      this.logger.info(`[PW_SUBSCRIPTION] Found active alliances: ${this.allianceIds.join(', ')}`);
 
       // Get P&W API key from webapp for the first alliance
       this.apiKey = await this.getApiKeyFromWebapp(this.allianceIds[0]);
       
       if (!this.apiKey) {
-        this.logger.warn('[FIXED_PW_SUBSCRIPTION] No P&W API key available, war alerts will be disabled');
+        this.logger.warn('[PW_SUBSCRIPTION] No P&W API key available, war alerts will be disabled');
         return;
       }
 
-      this.logger.info('[FIXED_PW_SUBSCRIPTION] P&W API key configured from webapp');
+      this.logger.info('[PW_SUBSCRIPTION] P&W API key configured from webapp');
 
-      // Start polling for new wars instead of using broken pnwkit subscriptions
-      await this.startWarPolling();
+      // Start real-time war subscriptions
+      await this.startWarSubscriptions();
       
     } catch (error) {
-      this.logger.error('[FIXED_PW_SUBSCRIPTION] Failed to initialize:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Failed to initialize:', error);
       throw error;
     }
   }
@@ -102,153 +103,141 @@ export class FixedPWSubscriptionService {
       });
 
       if (!response.ok) {
-        this.logger.warn(`[FIXED_PW_SUBSCRIPTION] Failed to get API key for alliance ${allianceId}: ${response.status}`);
+        this.logger.warn(`[PW_SUBSCRIPTION] Failed to get API key for alliance ${allianceId}: ${response.status}`);
         return null;
       }
 
       const data = await response.json();
       if (data.success && data.apiKey) {
-        this.logger.info(`[FIXED_PW_SUBSCRIPTION] Got alliance-specific API key for ${data.allianceName} (${data.allianceAcronym}) - monitoring enabled`);
+        this.logger.info(`[PW_SUBSCRIPTION] Got alliance-specific API key for ${data.allianceName} (${data.allianceAcronym}) - monitoring enabled`);
         return data.apiKey;
       }
       
       return null;
     } catch (error) {
-      this.logger.error(`[FIXED_PW_SUBSCRIPTION] Error fetching API key for alliance ${allianceId}:`, error);
+      this.logger.error(`[PW_SUBSCRIPTION] Error fetching API key for alliance ${allianceId}:`, error);
       return null;
     }
   }
 
-  private async startWarPolling() {
+  private async startWarSubscriptions() {
     if (this.isMonitoring) return;
     
-    this.isMonitoring = true;
-    this.logger.info('[FIXED_PW_SUBSCRIPTION] Starting war polling with URL parameter format');
-
-    // Get the latest war ID to start from
-    await this.initializeLastWarId();
-
-    // Poll every 30 seconds for new wars
-    this.pollingInterval = setInterval(async () => {
-      await this.checkForNewWars();
-    }, 30000);
-
-    // Also check immediately
-    await this.checkForNewWars();
-  }
-
-  private async initializeLastWarId() {
     try {
-      const query = `{
-        wars(first: 1, orderBy: { column: DATE, order: DESC }) {
-          data {
-            id
-          }
-        }
-      }`;
+      this.isMonitoring = true;
+      this.logger.info('[PW_SUBSCRIPTION] Starting real-time war subscriptions...');
 
-      const response = await fetch(`https://api.politicsandwar.com/graphql?api_key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ query })
-      });
-
-      const data = await response.json();
+      // Step 1: Subscribe to war events using P&W subscription API
+      const subscribeUrl = `https://api.politicsandwar.com/subscriptions/v1/subscribe/war/create?api_key=${this.apiKey}`;
       
-      if (data.data?.wars?.data?.[0]) {
-        this.lastCheckedWarId = data.data.wars.data[0].id;
-        this.logger.info(`[FIXED_PW_SUBSCRIPTION] Initialized with latest war ID: ${this.lastCheckedWarId}`);
-      }
-    } catch (error) {
-      this.logger.error('[FIXED_PW_SUBSCRIPTION] Failed to initialize last war ID:', error);
-    }
-  }
-
-  private async checkForNewWars() {
-    try {
-      const query = `{
-        wars(first: 10, orderBy: { column: DATE, order: DESC }) {
-          data {
-            id
-            date
-            reason
-            war_type
-            att_id
-            def_id
-            att_alliance_id
-            def_alliance_id
-            attacker { 
-              nation_name 
-              alliance { name acronym }
-            }
-            defender { 
-              nation_name 
-              alliance { name acronym }
-            }
-          }
-        }
-      }`;
-
-      const response = await fetch(`https://api.politicsandwar.com/graphql?api_key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ query })
+      this.logger.info('[PW_SUBSCRIPTION] Requesting subscription channel...');
+      const response = await fetch(subscribeUrl, {
+        method: 'GET'
       });
 
-      const data = await response.json();
-
-      if (data.errors) {
-        this.logger.error('[FIXED_PW_SUBSCRIPTION] P&W API error:', data.errors);
-        return;
+      if (!response.ok) {
+        throw new Error(`Failed to subscribe to war events: ${response.status} ${response.statusText}`);
       }
 
-      if (data.data?.wars?.data) {
-        const wars = data.data.wars.data;
-        const newWars = [];
-
-        for (const war of wars) {
-          if (this.lastCheckedWarId && war.id <= this.lastCheckedWarId) {
-            break; // We've reached wars we've already processed
-          }
-          
-          // Check if this war involves any of our alliances
-          const attAllianceId = parseInt(war.att_alliance_id) || 0;
-          const defAllianceId = parseInt(war.def_alliance_id) || 0;
-          
-          if (this.allianceIds.includes(attAllianceId) || this.allianceIds.includes(defAllianceId)) {
-            newWars.push(war);
-          }
-        }
-
-        if (newWars.length > 0) {
-          this.logger.info(`[FIXED_PW_SUBSCRIPTION] Found ${newWars.length} new wars involving tracked alliances`);
-          
-          // Update last checked war ID
-          this.lastCheckedWarId = wars[0].id;
-          
-          // Process the new wars
-          await this.handleWarEvents(newWars, this.allianceIds);
-        }
+      const subscriptionData = await response.json();
+      const channelName = subscriptionData.channel;
+      
+      if (!channelName) {
+        throw new Error('No channel name returned from subscription API');
       }
+
+      this.logger.info(`[PW_SUBSCRIPTION] Got subscription channel: ${channelName}`);
+
+      // Step 2: Configure Pusher client with P&W settings
+      this.pusher = new Pusher("a22734a47847a64386c8", {
+        wsHost: "socket.politicsandwar.com",
+        cluster: "us2", // Required by pusher-js but not used by P&W
+        disableStats: true,
+        authEndpoint: "https://api.politicsandwar.com/subscriptions/v1/auth",
+      });
+
+      // Step 3: Subscribe to the channel
+      this.warChannel = this.pusher.subscribe(channelName);
+
+      // Step 4: Bind to war creation events
+      this.warChannel.bind('WAR_CREATE', (data: any) => {
+        this.logger.info('[PW_SUBSCRIPTION] Received WAR_CREATE event');
+        this.handleWarCreateEvent(data);
+      });
+
+      // Also bind to bulk events in case they're used
+      this.warChannel.bind('BULK_WAR_CREATE', (data: any) => {
+        this.logger.info('[PW_SUBSCRIPTION] Received BULK_WAR_CREATE event');
+        this.handleBulkWarCreateEvent(data);
+      });
+
+      // Handle connection events
+      this.pusher.connection.bind('connected', () => {
+        this.logger.info('[PW_SUBSCRIPTION] ✅ Connected to P&W real-time events');
+      });
+
+      this.pusher.connection.bind('disconnected', () => {
+        this.logger.warn('[PW_SUBSCRIPTION] ❌ Disconnected from P&W real-time events');
+      });
+
+      this.pusher.connection.bind('error', (error: any) => {
+        this.logger.error('[PW_SUBSCRIPTION] Pusher connection error:', error);
+      });
+
+      this.logger.info('[PW_SUBSCRIPTION] ✅ War subscriptions active - waiting for events...');
+
     } catch (error) {
-      this.logger.error('[FIXED_PW_SUBSCRIPTION] Error checking for new wars:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Failed to start war subscriptions:', error);
+      this.isMonitoring = false;
     }
   }
 
-  private async handleWarEvents(wars: any[], allianceIds: number[]) {
-    this.logger.info(`[FIXED_PW_SUBSCRIPTION] Processing ${wars.length} war events`);
-    
-    for (const warData of wars) {
-      try {
+  private async handleWarCreateEvent(data: any) {
+    try {
+      this.logger.info('[PW_SUBSCRIPTION] Processing war create event:', data);
+      
+      // Parse the war data from the event
+      const warData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      
+      // Check if this war involves any of our tracked alliances
+      const attAllianceId = parseInt(warData.att_alliance_id) || 0;
+      const defAllianceId = parseInt(warData.def_alliance_id) || 0;
+      
+      const isAllianceInvolved = this.allianceIds.includes(attAllianceId) || this.allianceIds.includes(defAllianceId);
+      
+      if (isAllianceInvolved) {
+        this.logger.info(`[PW_SUBSCRIPTION] Alliance war detected! War ID: ${warData.id}`);
+        
+        // Convert to our War interface format
         const war = this.parseWarData(warData);
+        
+        // Send war alert
         await this.handleWarAlert(war);
-      } catch (error) {
-        this.logger.error('[FIXED_PW_SUBSCRIPTION] Error processing war event:', error);
+      } else {
+        this.logger.debug(`[PW_SUBSCRIPTION] War ${warData.id} doesn't involve tracked alliances (${attAllianceId}, ${defAllianceId})`);
       }
+      
+    } catch (error) {
+      this.logger.error('[PW_SUBSCRIPTION] Error processing war create event:', error);
+    }
+  }
+
+  private async handleBulkWarCreateEvent(data: any) {
+    try {
+      this.logger.info('[PW_SUBSCRIPTION] Processing bulk war create event');
+      
+      // Parse the bulk data
+      const warsData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+      
+      if (Array.isArray(warsData)) {
+        for (const warData of warsData) {
+          // Process each war individually
+          await this.handleWarCreateEvent({ data: warData });
+        }
+      }
+      
+    } catch (error) {
+      this.logger.error('[PW_SUBSCRIPTION] Error processing bulk war create event:', error);
     }
   }
 
@@ -265,7 +254,7 @@ export class FixedPWSubscriptionService {
       attacker: {
         id: warData.att_id,
         nation_name: warData.attacker?.nation_name || 'Unknown Nation',
-        leader_name: 'Unknown Leader',
+        leader_name: warData.attacker?.leader_name || 'Unknown Leader',
         alliance: warData.attacker?.alliance ? {
           id: warData.att_alliance_id || '0',
           name: warData.attacker.alliance.name,
@@ -275,7 +264,7 @@ export class FixedPWSubscriptionService {
       defender: {
         id: warData.def_id,
         nation_name: warData.defender?.nation_name || 'Unknown Nation',
-        leader_name: 'Unknown Leader',
+        leader_name: warData.defender?.leader_name || 'Unknown Leader',
         alliance: warData.defender?.alliance ? {
           id: warData.def_alliance_id || '0',
           name: warData.defender.alliance.name,
@@ -327,7 +316,7 @@ export class FixedPWSubscriptionService {
       }
 
     } catch (error) {
-      this.logger.error('[FIXED_PW_SUBSCRIPTION] Error handling war alert:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Error handling war alert:', error);
     }
   }
 
@@ -338,7 +327,7 @@ export class FixedPWSubscriptionService {
       
       const channel = client.channels.cache.get(channelConfig.channelId);
       if (!channel || !channel.isTextBased()) {
-        this.logger.warn(`[FIXED_PW_SUBSCRIPTION] Invalid channel: ${channelConfig.channelId}`);
+        this.logger.warn(`[PW_SUBSCRIPTION] Invalid channel: ${channelConfig.channelId}`);
         return;
       }
 
@@ -374,19 +363,27 @@ export class FixedPWSubscriptionService {
       };
 
       await channel.send({ embeds: [embed] });
-      this.logger.info(`[FIXED_PW_SUBSCRIPTION] Sent war alert for war ${war.id} to channel ${channelConfig.channelId}`);
+      this.logger.info(`[PW_SUBSCRIPTION] ✅ Sent war alert for war ${war.id} to channel ${channelConfig.channelId}`);
       
     } catch (error) {
-      this.logger.error('[FIXED_PW_SUBSCRIPTION] Error sending war alert:', error);
+      this.logger.error('[PW_SUBSCRIPTION] Error sending war alert:', error);
     }
   }
 
   public stop() {
     this.isMonitoring = false;
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
+    
+    if (this.warChannel) {
+      this.warChannel.unbind_all();
+      this.pusher?.unsubscribe(this.warChannel.name);
+      this.warChannel = null;
     }
-    this.logger.info('[FIXED_PW_SUBSCRIPTION] War monitoring stopped');
+    
+    if (this.pusher) {
+      this.pusher.disconnect();
+      this.pusher = null;
+    }
+    
+    this.logger.info('[PW_SUBSCRIPTION] War monitoring stopped');
   }
 }
