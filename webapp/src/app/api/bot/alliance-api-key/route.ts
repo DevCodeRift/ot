@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,22 +23,45 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid allianceId' }, { status: 400 })
     }
 
-    // Use system-wide P&W API key for monitoring all alliances
-    const systemApiKey = process.env.POLITICS_AND_WAR_API_KEY
-    
-    if (!systemApiKey) {
+    // Find the alliance-specific API key
+    const allianceApiKey = await prisma.allianceApiKey.findUnique({
+      where: {
+        allianceId: allianceIdNum,
+        isActive: true
+      },
+      include: {
+        alliance: {
+          select: {
+            name: true,
+            acronym: true
+          }
+        }
+      }
+    })
+
+    if (!allianceApiKey) {
       return NextResponse.json({ 
-        error: 'System P&W API key not configured',
-        details: 'Server administrator needs to set POLITICS_AND_WAR_API_KEY environment variable'
-      }, { status: 500 })
+        error: 'No API key configured for this alliance',
+        allianceId: allianceIdNum,
+        details: 'Alliance administrators need to configure a P&W API key for war monitoring'
+      }, { status: 404 })
     }
+
+    // Update last used timestamp
+    await prisma.allianceApiKey.update({
+      where: { id: allianceApiKey.id },
+      data: { lastUsed: new Date() }
+    })
 
     return NextResponse.json({
       success: true,
       allianceId: allianceIdNum,
-      apiKey: systemApiKey,
-      source: 'system',
-      message: 'Using system API key for alliance-wide monitoring'
+      apiKey: allianceApiKey.apiKey,
+      keyName: allianceApiKey.keyName,
+      allianceName: allianceApiKey.alliance.name,
+      allianceAcronym: allianceApiKey.alliance.acronym,
+      source: 'alliance-specific',
+      message: 'Using alliance-configured API key for war monitoring'
     })
 
   } catch (error) {
