@@ -162,12 +162,14 @@ export class PWSubscriptionService {
       // Step 4: Bind to war creation events
       this.warChannel.bind('WAR_CREATE', (data: any) => {
         this.logger.info('[PW_SUBSCRIPTION] Received WAR_CREATE event');
+        this.logger.info('[PW_SUBSCRIPTION] WAR_CREATE raw data:', JSON.stringify(data, null, 2));
         this.handleWarCreateEvent(data);
       });
 
       // Also bind to bulk events in case they're used
       this.warChannel.bind('BULK_WAR_CREATE', (data: any) => {
         this.logger.info('[PW_SUBSCRIPTION] Received BULK_WAR_CREATE event');
+        this.logger.info('[PW_SUBSCRIPTION] BULK_WAR_CREATE raw data:', JSON.stringify(data, null, 2));
         this.handleBulkWarCreateEvent(data);
       });
 
@@ -197,9 +199,27 @@ export class PWSubscriptionService {
       this.logger.info('[PW_SUBSCRIPTION] Processing war create event');
       this.logger.info('[PW_SUBSCRIPTION] War event data structure:', JSON.stringify(data, null, 2));
       
-      // Parse the war data from the event
-      const warData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-      this.logger.info('[PW_SUBSCRIPTION] Parsed war data:', JSON.stringify(warData, null, 2));
+      // Try different ways to access the war data
+      let warData = null;
+      
+      // Option 1: Direct data access
+      if (data && typeof data === 'object' && !data.data) {
+        warData = data;
+        this.logger.info('[PW_SUBSCRIPTION] Using direct data access for war');
+      }
+      
+      // Option 2: data.data property
+      if (!warData && data.data) {
+        warData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+        this.logger.info('[PW_SUBSCRIPTION] Using data.data property for war');
+      }
+      
+      this.logger.info('[PW_SUBSCRIPTION] Final war data:', JSON.stringify(warData, null, 2));
+      
+      if (!warData || !warData.id) {
+        this.logger.warn('[PW_SUBSCRIPTION] Invalid war data - missing id');
+        return;
+      }
       
       // Check if this war involves any of our tracked alliances
       const attAllianceId = parseInt(warData.att_alliance_id) || 0;
@@ -234,9 +254,28 @@ export class PWSubscriptionService {
       this.logger.info('[PW_SUBSCRIPTION] Processing bulk war create event');
       this.logger.info('[PW_SUBSCRIPTION] Raw data received:', JSON.stringify(data, null, 2));
       
-      // Parse the bulk data
-      const warsData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-      this.logger.info('[PW_SUBSCRIPTION] Parsed wars data:', JSON.stringify(warsData, null, 2));
+      // Try different ways to access the data
+      let warsData = null;
+      
+      // Option 1: Direct data access
+      if (data && typeof data === 'object') {
+        warsData = data;
+        this.logger.info('[PW_SUBSCRIPTION] Using direct data access');
+      }
+      
+      // Option 2: data.data property
+      if (!warsData && data.data) {
+        warsData = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+        this.logger.info('[PW_SUBSCRIPTION] Using data.data property');
+      }
+      
+      // Option 3: Check for wars property
+      if (!warsData && data.wars) {
+        warsData = data.wars;
+        this.logger.info('[PW_SUBSCRIPTION] Using data.wars property');
+      }
+      
+      this.logger.info('[PW_SUBSCRIPTION] Final wars data:', JSON.stringify(warsData, null, 2));
       
       if (Array.isArray(warsData)) {
         this.logger.info(`[PW_SUBSCRIPTION] Processing ${warsData.length} wars from bulk event`);
@@ -244,11 +283,12 @@ export class PWSubscriptionService {
           // Process each war individually
           await this.handleWarCreateEvent({ data: warData });
         }
-      } else if (warsData) {
+      } else if (warsData && typeof warsData === 'object') {
         this.logger.info('[PW_SUBSCRIPTION] Non-array wars data, processing as single war');
         await this.handleWarCreateEvent({ data: warsData });
       } else {
         this.logger.warn('[PW_SUBSCRIPTION] No wars data found in bulk event');
+        this.logger.info('[PW_SUBSCRIPTION] Available properties:', Object.keys(data || {}));
       }
       
     } catch (error) {
